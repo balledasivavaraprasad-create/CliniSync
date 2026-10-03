@@ -184,6 +184,7 @@
   const nav = $("#nav");
   const scrollBar = $("#scrollBar");
   const heroVideo = $("#heroVideo");
+  const heroVideos = $$(".hero__video");
   const heroEl = $("#hero");
   const flowEl = $("#workflow");
   const flowRail = $("#flowRail");
@@ -229,10 +230,13 @@
     if (nav) nav.classList.toggle("is-stuck", y > 40);
 
     // hero parallax + zoom out
-    if (heroVideo && heroEl && !reduced) {
+    if (heroEl && !reduced) {
       const hp = clamp(y / window.innerHeight, 0, 1);
-      heroVideo.style.transform = `scale(${1.08 + hp * 0.12}) translateY(${hp * -6}%)`;
-      heroVideo.style.opacity = String(0.85 - hp * 0.5);
+      const op = 0.9 - hp * 0.55;
+      heroVideos.forEach((v) => {
+        v.style.transform = `scale(${1.08 + hp * 0.12}) translateY(${hp * -6}%)`;
+        v.style.setProperty("--hero-op", op.toFixed(3));
+      });
     }
 
     // rails fill
@@ -664,4 +668,73 @@
     scrollyHook = updateScrolly;
     setScrollyStep(0);
   }
+
+  /* ----------------------------------------------------------
+     17. THEME SWITCHING (dark ⇄ light)
+     ---------------------------------------------------------- */
+  const root = document.documentElement;
+  const toggles = $$("#themeToggle, #themeToggleMobile");
+
+  function syncVideos(theme) {
+    const active = theme === "light" ? "--light" : "--dark";
+    $$(".hero__video, .brief__video").forEach((v) => {
+      const isActive =
+        v.classList.contains("hero__video" + active) ||
+        v.classList.contains("brief__video" + active);
+      if (isActive) v.play().catch(() => {});
+      else v.pause();
+    });
+  }
+
+  function applyTheme(theme, origin) {
+    const set = () => {
+      root.setAttribute("data-theme", theme);
+      try { localStorage.setItem("clinsync-theme", theme); } catch (e) {}
+      const meta = document.getElementById("themeColorMeta");
+      if (meta) meta.setAttribute("content", theme === "light" ? "#f6f8fc" : "#05070d");
+      syncVideos(theme);
+      updateToggleUI(theme);
+    };
+
+    root.classList.add("theme-anim");
+    setTimeout(() => root.classList.remove("theme-anim"), 520);
+
+    if (document.startViewTransition && origin && !reduced) {
+      root.style.setProperty("--tx", origin.x + "px");
+      root.style.setProperty("--ty", origin.y + "px");
+      document.startViewTransition(set);
+    } else {
+      set();
+    }
+  }
+
+  function updateToggleUI(theme) {
+    const next = theme === "light" ? "dark" : "light";
+    toggles.forEach((t) => {
+      t.setAttribute("aria-pressed", theme === "light" ? "true" : "false");
+      t.setAttribute("aria-label", "Switch to " + next + " mode");
+    });
+  }
+
+  function currentTheme() {
+    return root.getAttribute("data-theme") === "light" ? "light" : "dark";
+  }
+
+  toggles.forEach((t) => {
+    t.addEventListener("click", (e) => {
+      const r = t.getBoundingClientRect();
+      const origin = { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+      applyTheme(currentTheme() === "light" ? "dark" : "light", origin);
+    });
+  });
+
+  // follow OS changes only if the user hasn't chosen explicitly
+  window.matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", (e) => {
+    let stored = null;
+    try { stored = localStorage.getItem("clinsync-theme"); } catch (err) {}
+    if (!stored) applyTheme(e.matches ? "light" : "dark", { x: innerWidth / 2, y: 40 });
+  });
+
+  updateToggleUI(currentTheme());
+  syncVideos(currentTheme());
 })();

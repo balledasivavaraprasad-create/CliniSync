@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta name="theme-color" content="#05070d" />
+<meta name="theme-color" content="#05070d" id="themeColorMeta" />
 <title>ClinSync — Know the patient before you meet the patient</title>
 <meta name="description" content="ClinSync prepares a patient's clinical picture before the doctor walks into the consultation. Voice intake, medical documents, longitudinal clinical memory and evidence-backed doctor briefs." />
 <meta property="og:title" content="ClinSync — Know the patient before you meet the patient" />
@@ -12,7 +12,21 @@
 <meta name="twitter:card" content="summary_large_image" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script>
+  /* set theme before first paint to avoid flash */
+  (function () {
+    try {
+      var t = localStorage.getItem("clinsync-theme");
+      if (t !== "light" && t !== "dark") {
+        t = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      }
+      document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  })();
+</script>
 <link rel="stylesheet" href="assets/css/style.css" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Circle cx='16' cy='16' r='13' fill='none' stroke='%2338bdf8' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%2338bdf8'/%3E%3C/svg%3E" />
 </head>
@@ -81,6 +95,14 @@
       <a href="#architecture">Architecture</a>
     </nav>
     <div class="nav__actions">
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to light mode" aria-pressed="false">
+        <span class="theme-toggle__icon theme-toggle__icon--sun" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </span>
+        <span class="theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        </span>
+      </button>
       <a href="#architecture" class="btn btn--ghost" data-cursor="docs">Platform</a>
       <a href="#cta" class="btn btn--solid" data-cursor="start">Request demo</a>
       <button class="nav__burger" id="burger" aria-label="Open menu"><span></span><span></span></button>
@@ -96,6 +118,13 @@
   <a href="#evidence">Evidence</a>
   <a href="#architecture">Architecture</a>
   <a href="#cta" class="mobile-menu__cta">Request demo</a>
+  <div class="mobile-menu__row">
+    <span>Appearance</span>
+    <button class="theme-toggle theme-toggle--inline" id="themeToggleMobile" type="button" aria-label="Switch theme">
+      <span class="theme-toggle__icon theme-toggle__icon--sun" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+      <span class="theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
+    </button>
+  </div>
 </div>
 
 <main id="top">
@@ -103,8 +132,11 @@
   <!-- ============ HERO ============ -->
   <section class="hero" id="hero">
     <div class="hero__media">
-      <video class="hero__video" id="heroVideo" autoplay muted loop playsinline preload="auto" poster="assets/video/hero-dark-poster.jpg">
+      <video class="hero__video hero__video--dark" id="heroVideo" autoplay muted loop playsinline preload="auto" poster="assets/video/hero-dark-poster.jpg">
         <source src="assets/video/hero-dark.mp4" type="video/mp4" />
+      </video>
+      <video class="hero__video hero__video--light" id="heroVideoLight" autoplay muted loop playsinline preload="auto" poster="assets/video/hero-light-poster.jpg">
+        <source src="assets/video/hero-light.mp4" type="video/mp4" />
       </video>
       <div class="hero__scrim"></div>
       <div class="hero__vignette"></div>
@@ -674,8 +706,11 @@
   <!-- ============ DOCTOR BRIEF ============ -->
   <section class="section brief" id="brief">
     <div class="brief__bg" aria-hidden="true">
-      <video class="brief__video" autoplay muted loop playsinline preload="none" poster="assets/video/ribbon-light-poster.jpg">
+      <video class="brief__video brief__video--dark" autoplay muted loop playsinline preload="none" poster="assets/video/ribbon-light-poster.jpg">
         <source src="assets/video/ribbon-light.mp4" type="video/mp4" />
+      </video>
+      <video class="brief__video brief__video--light" autoplay muted loop playsinline preload="none" poster="assets/video/ribbon-dark-poster.jpg">
+        <source src="assets/video/ribbon-dark.mp4" type="video/mp4" />
       </video>
     </div>
     <div class="wrap">
