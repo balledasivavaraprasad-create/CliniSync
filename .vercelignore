@@ -1,0 +1,13 @@
+.git
+.venv
+android
+backend
+build
+lib
+test
+tests
+.idea
+*.zip
+*.db
+storage
+clinicsync.iml

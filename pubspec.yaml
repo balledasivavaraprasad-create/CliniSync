@@ -1,0 +1,88 @@
+name: clinicsync
+description: "ClinSync — AI-assisted pre-consultation intelligence and longitudinal clinical memory"
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── State
+  flutter_riverpod: ^2.5.1
+
+  # ── Navigation
+  go_router: ^14.2.7
+
+  # ── Networking
+  dio: ^5.4.3+1
+
+  # ── Capture
+  image_picker: ^1.1.2
+  file_picker: ^8.1.2
+  record: ^5.1.2
+  permission_handler: ^11.3.0
+
+  # ── Media
+  video_player: ^2.8.7
+
+  # ── Charts
+  fl_chart: ^0.68.0
+
+  # ── Storage / utils
+  shared_preferences: ^2.3.2
+  intl: ^0.19.0
+
+  # ── Iconography (single thin-stroke line family — plan §7.7)
+  google_fonts: ^8.2.1
+  http: ^1.6.0
+  path_provider: ^2.1.6
+  lucide_icons_flutter: ^3.1.21
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/video/
+    - assets/demo/
+
+  fonts:
+    # ── Serif: display / headlines / screen titles (landing-page serif, plan §7.2)
+    - family: CormorantGaramond
+      fonts:
+        - asset: assets/fonts/CormorantGaramond-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/CormorantGaramond-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/CormorantGaramond-SemiBold.ttf
+          weight: 600
+
+    # ── Sans: UI / body / labels
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+
+    # ── Mono: source spans / verbatim quotes
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/JetBrainsMono-Medium.ttf
+          weight: 500

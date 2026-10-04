@@ -12,19 +12,12 @@
 <meta name="twitter:card" content="summary_large_image" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
 <script>
-  /* set theme before first paint to avoid flash */
+  /* lock theme to light mode */
   (function () {
-    try {
-      var t = localStorage.getItem("clinsync-theme");
-      if (t !== "light" && t !== "dark") {
-        t = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-      }
-      document.documentElement.setAttribute("data-theme", t);
-    } catch (e) {
-      document.documentElement.setAttribute("data-theme", "dark");
-    }
+    document.documentElement.setAttribute("data-theme", "light");
+    try { localStorage.setItem("clinsync-theme", "light"); } catch (e) {}
   })();
 </script>
 <link rel="stylesheet" href="assets/css/style.css" />
@@ -44,6 +37,13 @@
   .mword{color:var(--ink)!important}
   .docscan__box{opacity:1!important;transform:none!important}
 </style></noscript>
+
+<!-- ambient colour field -->
+<div class="ambient" aria-hidden="true">
+  <span class="ambient__orb ambient__orb--a"></span>
+  <span class="ambient__orb ambient__orb--b"></span>
+  <span class="ambient__orb ambient__orb--c"></span>
+</div>
 
 <!-- ============ PRELOADER ============ -->
 <div class="preloader" id="preloader">
@@ -95,14 +95,11 @@
       <a href="#architecture">Architecture</a>
     </nav>
     <div class="nav__actions">
-      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to light mode" aria-pressed="false">
-        <span class="theme-toggle__icon theme-toggle__icon--sun" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-        </span>
-        <span class="theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-        </span>
-      </button>
+      <a href="http://127.0.0.1:3000/#/login" class="btn btn--ghost" data-cursor="login">Sign in</a>
+      <a href="downloads/ClinSync.apk" download="ClinSync.apk" class="btn btn--ghost" data-cursor="download" style="color:var(--accent,#ea580c);font-weight:600;">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="display:inline-block;vertical-align:-2px;margin-right:4px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+        Download APK
+      </a>
       <a href="#architecture" class="btn btn--ghost" data-cursor="docs">Platform</a>
       <a href="#cta" class="btn btn--solid" data-cursor="start">Request demo</a>
       <button class="nav__burger" id="burger" aria-label="Open menu"><span></span><span></span></button>
@@ -111,6 +108,8 @@
 </header>
 
 <div class="mobile-menu" id="mobileMenu">
+  <a href="http://127.0.0.1:3000/#/login" style="color:var(--accent,#ea580c);font-weight:600">Sign in to App →</a>
+  <a href="downloads/ClinSync.apk" download="ClinSync.apk" style="color:#0284c7;font-weight:600">Download Android APK (v1.0) ↓</a>
   <a href="#problem">Why ClinSync</a>
   <a href="#workflow">Workflow</a>
   <a href="#memory">Clinical Memory</a>
@@ -118,13 +117,6 @@
   <a href="#evidence">Evidence</a>
   <a href="#architecture">Architecture</a>
   <a href="#cta" class="mobile-menu__cta">Request demo</a>
-  <div class="mobile-menu__row">
-    <span>Appearance</span>
-    <button class="theme-toggle theme-toggle--inline" id="themeToggleMobile" type="button" aria-label="Switch theme">
-      <span class="theme-toggle__icon theme-toggle__icon--sun" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.2 5.2l1.9 1.9M16.9 16.9l1.9 1.9M18.8 5.2l-1.9 1.9M7.1 16.9l-1.9 1.9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
-      <span class="theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></span>
-    </button>
-  </div>
 </div>
 
 <main id="top">
@@ -162,13 +154,13 @@
       </p>
 
       <div class="hero__cta reveal">
-        <a href="#workflow" class="btn btn--solid btn--lg" data-cursor="explore">
-          <span>See how it works</span>
-          <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <a href="downloads/ClinSync.apk" download="ClinSync.apk" class="btn btn--solid btn--lg" data-cursor="download">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="display:inline-block;vertical-align:-3px;margin-right:8px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+          <span>Download Android APK</span>
         </a>
-        <a href="#brief" class="btn btn--line btn--lg" data-cursor="open">
-          <span class="btn__play"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg></span>
-          View a doctor brief
+        <a href="http://127.0.0.1:3000/#/login" class="btn btn--line btn--lg" data-cursor="open">
+          <span>Launch Web App</span>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
       </div>
 
@@ -950,8 +942,14 @@
       <h2 class="cta__title reveal">Know the patient<br/><em>before you meet the patient.</em></h2>
       <p class="cta__sub reveal">ClinSync prepares the clinical picture. Your team focuses on care.</p>
       <div class="cta__actions reveal">
-        <a href="#" class="btn btn--solid btn--lg" data-cursor="go"><span>Request a demo</span><svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
-        <a href="#workflow" class="btn btn--line btn--lg" data-cursor="back"><span>Revisit the workflow</span></a>
+        <a href="downloads/ClinSync.apk" download="ClinSync.apk" class="btn btn--solid btn--lg" data-cursor="download">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="display:inline-block;vertical-align:-3px;margin-right:8px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+          <span>Download Android APK</span>
+        </a>
+        <a href="http://127.0.0.1:3000/#/login" class="btn btn--line btn--lg" data-cursor="launch">
+          <span>Launch Web App</span>
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
       </div>
     </div>
   </section>

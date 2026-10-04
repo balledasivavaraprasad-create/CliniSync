@@ -1,0 +1,26 @@
+{
+  "success": true,
+  "data": {
+    "fact_id": "fact_e013b241a11043b9",
+    "fact_type": "medication",
+    "value": "Metformin 1000.0 mg",
+    "confidence": 0.95,
+    "confidence_band": "high",
+    "provenance_verified": true,
+    "verification_status": "unverified",
+    "source": {
+      "document_id": "doc_demo_005_rx_sep",
+      "document_filename": "doc5_prescription_sep2026.pdf",
+      "document_type": "prescription",
+      "document_date": "2026-09-12T12:00:00",
+      "page_number": 1,
+      "verbatim_text": "Tab. Metformin 1000 mg twice daily (BD) indicated in second outpatient voucher.",
+      "span_start": null,
+      "span_end": null
+    }
+  },
+  "meta": {
+    "request_id": "req_demo_bundle",
+    "source": "fallback"
+  }
+}

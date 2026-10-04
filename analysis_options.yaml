@@ -1,0 +1,57 @@
+# ClinSync Flutter frontend — static analysis configuration.
+#
+# The previous `analyzer.errors` block silenced `unused_import`,
+# `unused_element`, `unused_local_variable`, `unused_element_parameter` and
+# `deprecated_member_use`. Those suppressions were inherited from the removed
+# dashboard; they are intentionally NOT carried into the rebuild so dead code
+# and raw deprecations surface (docs/frontend/DECISIONS.md).
+
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - build/**
+    - web/**
+    - macos/**
+    - android/**
+    - ios/**
+  errors:
+    # `Color.withOpacity` is deprecated in Flutter 3.27+; use `withValues(alpha:)`.
+    deprecated_member_use: warning
+    # Treat analysis-time hints as errors in CI.
+    todo: ignore
+
+linter:
+  rules:
+    # ── Design-system discipline (plan §7, §18 "tokens are the only source of
+    #    colour/type/spacing/radius/shadow").
+    prefer_const_constructors: true
+    prefer_const_constructors_in_immutables: true
+    prefer_const_declarations: true
+    prefer_const_literals_to_create_immutables: true
+
+    # ── Correctness
+    always_declare_return_types: true
+    avoid_empty_else: true
+    avoid_relative_lib_imports: true
+    avoid_returning_null_for_void: true
+    await_only_futures: true
+    cancel_subscriptions: true
+    close_sinks: true
+    directives_ordering: true
+    prefer_final_in_for_each: true
+    prefer_final_locals: true
+    throw_in_finally: true
+    unawaited_futures: true
+    unnecessary_await_in_return: true
+    unnecessary_parenthesis: true
+    unnecessary_statements: true
+    use_build_context_synchronously: true
+
+    # ── Readability
+    avoid_positional_boolean_parameters: true
+    require_trailing_commas: false
+    sort_constructors_first: true
+    unnecessary_lambdas: true
+    unnecessary_string_escapes: true
+    use_named_constants: true

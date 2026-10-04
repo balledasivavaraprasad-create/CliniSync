@@ -1,0 +1,85 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": "iss_32d6853b7b2048b7",
+      "patient_id": "pat_demo_patient_001",
+      "issue_type": "missing_information",
+      "severity": "low",
+      "title": "Allergy status undocumented",
+      "description": "Potentially missing: Drug or environmental allergy status. Reason: No documented drug or environmental allergy records found across uploaded clinical files.",
+      "related_document_ids": [],
+      "related_fact_ids": [],
+      "detail_json": {
+        "prompt": "Potentially missing: Drug or environmental allergy status",
+        "reason": "No documented drug or environmental allergy records found across uploaded clinical files."
+      },
+      "status": "open",
+      "doctor_note": null,
+      "created_at": "2026-10-04T17:12:29.115935",
+      "updated_at": "2026-10-04T17:12:29.115936"
+    },
+    {
+      "id": "iss_98cf89d02703442d",
+      "patient_id": "pat_demo_patient_001",
+      "issue_type": "unclear_medication_status",
+      "severity": "low",
+      "title": "Unclear Active Status for Metformin",
+      "description": "Medication records for Metformin do not clearly indicate if the drug is currently active or discontinued.",
+      "related_document_ids": [
+        "doc_demo_002_rx_feb",
+        "doc_demo_005_rx_sep",
+        "doc_demo_005_rx_sep"
+      ],
+      "related_fact_ids": [
+        "fact_941c1b035ed14fe1",
+        "fact_7658200983274153",
+        "fact_e013b241a11043b9"
+      ],
+      "detail_json": {
+        "drug": "metformin"
+      },
+      "status": "open",
+      "doctor_note": null,
+      "created_at": "2026-10-04T17:12:29.114298",
+      "updated_at": "2026-10-04T17:12:29.114299"
+    },
+    {
+      "id": "iss_733f6179354d46e7",
+      "patient_id": "pat_demo_patient_001",
+      "issue_type": "medication_conflict",
+      "severity": "high",
+      "title": "Conflicting dosage instructions for Metformin",
+      "description": "Two records contain different Metformin instructions: Tab. Metformin 500 mg 500.0mg twice daily (doc5_prescription_sep2026.pdf, 12 Sep 2026) vs Tab. Metformin 1000 mg 1000.0mg twice daily (doc5_prescription_sep2026.pdf, 12 Sep 2026).",
+      "related_document_ids": [
+        "doc_demo_005_rx_sep",
+        "doc_demo_005_rx_sep"
+      ],
+      "related_fact_ids": [
+        "fact_7658200983274153",
+        "fact_e013b241a11043b9"
+      ],
+      "detail_json": {
+        "drug": "metformin",
+        "source_1": {
+          "doc": "doc5_prescription_sep2026.pdf",
+          "dose": "500.0mg",
+          "freq": "BD"
+        },
+        "source_2": {
+          "doc": "doc5_prescription_sep2026.pdf",
+          "dose": "1000.0mg",
+          "freq": "BD"
+        }
+      },
+      "status": "open",
+      "doctor_note": null,
+      "created_at": "2026-10-04T17:12:29.112315",
+      "updated_at": "2026-10-04T17:12:29.112316"
+    }
+  ],
+  "meta": {
+    "request_id": "req_demo_bundle",
+    "source": "fallback"
+  }
+}

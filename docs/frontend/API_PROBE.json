@@ -1,0 +1,1125 @@
+{
+  "health": {
+    "method": "GET",
+    "path": "/api/v1/health",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_0ea5ba2f9cd64646",
+      "source": "system"
+    },
+    "all_sources": [
+      "system"
+    ],
+    "error_code": null,
+    "shape": {
+      "status": "str",
+      "app": "str",
+      "env": "str"
+    }
+  },
+  "healthDeep": {
+    "method": "GET",
+    "path": "/api/v1/health/deep",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_c1d2af10b3614aeb",
+      "source": "system"
+    },
+    "all_sources": [
+      "system"
+    ],
+    "error_code": null,
+    "shape": {
+      "app": "str",
+      "status": "str",
+      "database": "str",
+      "storage_writable": "bool",
+      "validation_enabled": "bool",
+      "providers": {
+        "gemini": "str",
+        "groq": "str"
+      }
+    }
+  },
+  "patients.list": {
+    "method": "GET",
+    "path": "/api/v1/patients",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_0373c723a844442a",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": [
+      {
+        "id": "str",
+        "full_name": "str",
+        "date_of_birth": "NoneType",
+        "age_years": "NoneType",
+        "sex": "NoneType",
+        "contact_ref": "NoneType",
+        "is_demo": "bool",
+        "last_activity_at": "str",
+        "created_at": "str"
+      },
+      "\u00d750"
+    ]
+  },
+  "patients.get": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_51c4b974e1c94bfa",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": {
+      "id": "str",
+      "full_name": "str",
+      "date_of_birth": "str",
+      "age_years": "int",
+      "sex": "str",
+      "contact_ref": "str",
+      "is_demo": "bool",
+      "last_activity_at": "str",
+      "created_at": "str"
+    }
+  },
+  "patients.overview": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001/overview",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_744301d74f7b415b",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": {
+      "patient": {
+        "id": "str",
+        "full_name": "str",
+        "date_of_birth": "str",
+        "age_years": "int",
+        "sex": "str",
+        "contact_ref": "str",
+        "is_demo": "bool",
+        "last_activity_at": "str",
+        "created_at": "str"
+      },
+      "source_count": "int",
+      "latest_brief": {
+        "patient": {
+          "id": "str",
+          "name": "str",
+          "age": "int"
+        },
+        "specialty": "str",
+        "generated_at": "str",
+        "chief_complaint": {
+          "text": "str",
+          "evidence_ids": [
+            "str",
+            "\u00d71"
+          ],
+          "confidence_band": "str"
+        },
+        "relevant_history": [
+          "\u2026",
+          "\u00d71"
+        ],
+        "current_medications": [
+          "\u2026",
+          "\u00d74"
+        ],
+        "allergies": [
+          "\u2026",
+          "\u00d71"
+        ],
+        "recent_investigations": [
+          "\u2026",
+          "\u00d73"
+        ],
+        "important_trends": [
+          "\u2026",
+          "\u00d73"
+        ],
+        "attention_items": [
+          "\u2026",
+          "\u00d71"
+        ],
+        "contradictions": [
+          "\u2026",
+          "\u00d72"
+        ],
+        "missing_information": [
+          "\u2026",
+          "\u00d71"
+        ],
+        "evidence_shortcuts": [
+          "\u2026",
+          "\u00d78"
+        ],
+        "disclaimer": "str"
+      },
+      "attention_items": [
+        {
+          "id": "str",
+          "title": "str",
+          "description": "str",
+          "severity": "str",
+          "issue_type": "str"
+        },
+        "\u00d74"
+      ],
+      "timeline_preview": [
+        {
+          "id": "str",
+          "event_type": "str",
+          "event_date": "str",
+          "title": "str",
+          "summary": "str"
+        },
+        "\u00d75"
+      ],
+      "current_medications": [
+        {
+          "id": "str",
+          "canonical_name": "str",
+          "raw_name": "str",
+          "dose_text": "str",
+          "frequency_text": "str",
+          "status": "str"
+        },
+        "\u00d72"
+      ],
+      "latest_investigations": [
+        {
+          "id": "str",
+          "test_name_canonical": "str",
+          "value_text": "str",
+          "unit": "str",
+          "abnormal_flag": "str",
+          "observed_date": "str"
+        },
+        "\u00d76"
+      ],
+      "memory_summary": [
+        {
+          "id": "str",
+          "memory_type": "str",
+          "content": "\u2026",
+          "created_at": "str"
+        },
+        "\u00d72"
+      ],
+      "open_issue_counts": {
+        "medication_conflict": "int",
+        "missing_information": "int",
+        "unclear_medication_status": "int"
+      }
+    }
+  },
+  "patients.audit": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001/audit",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_direct",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": "[]"
+  },
+  "patients.memory": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001/memory",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_4203d60daa834b2f",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": [
+      {
+        "id": "str",
+        "memory_type": "str",
+        "content": {
+          "active_regimen": [
+            "str",
+            "\u00d72"
+          ]
+        },
+        "source_consultation_id": "str",
+        "verified": "bool",
+        "validation_report_id": "NoneType",
+        "created_at": "str"
+      },
+      "\u00d72"
+    ]
+  },
+  "patients.memoryHistory": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001/memory/history",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_6e9dea0634864d5b",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": [
+      {
+        "id": "str",
+        "memory_type": "str",
+        "content": {
+          "active_regimen": [
+            "str",
+            "\u00d72"
+          ]
+        },
+        "source_consultation_id": "str",
+        "verified": "bool",
+        "validation_report_id": "NoneType",
+        "created_at": "str"
+      },
+      "\u00d72"
+    ]
+  },
+  "documents.list": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001/documents",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_7812d5fd82e34814",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": [
+      {
+        "id": "str",
+        "patient_id": "str",
+        "original_filename": "str",
+        "mime_type": "str",
+        "file_size": "int",
+        "sha256": "str",
+        "page_count": "int",
+        "document_type": "str",
+        "document_date": "str",
+        "classification_confidence": "float",
+        "processing_status": "str",
+        "processing_error_code": "NoneType",
+        "ocr_method": "str",
+        "is_fallback": "bool",
+        "uploaded_via": "str",
+        "created_at": "str",
+        "duplicate": "bool"
+      },
+      "\u00d76"
+    ]
+  },
+  "facts.list": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001/facts",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_a922287ceffe4777",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": [
+      {
+        "id": "str",
+        "patient_id": "str",
+        "document_id": "str",
+        "fact_type": "str",
+        "value": "str",
+        "fact_date": "str",
+        "confidence": "float",
+        "confidence_band": "str",
+        "source_text": "str",
+        "source_page": "int",
+        "provenance_verified": "bool",
+        "verification_status": "str",
+        "created_at": "str"
+      },
+      "\u00d716"
+    ]
+  },
+  "timeline.list": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001/timeline",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_70c39e59f8d14f97",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": [
+      {
+        "id": "str",
+        "patient_id": "str",
+        "event_type": "str",
+        "event_date": "str",
+        "date_precision": "str",
+        "title": "str",
+        "summary": "str",
+        "related_fact_ids": "[]",
+        "source_document_id": "NoneType",
+        "sort_key": "str",
+        "created_at": "str"
+      },
+      "\u00d713"
+    ]
+  },
+  "medications.list": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001/medications",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_f5bd12617f7a4b33",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": [
+      {
+        "id": "str",
+        "patient_id": "str",
+        "canonical_name": "str",
+        "raw_name": "str",
+        "strength_value": "float",
+        "strength_unit": "str",
+        "dose_text": "str",
+        "frequency_code": "str",
+        "frequency_text": "str",
+        "route": "NoneType",
+        "duration_text": "NoneType",
+        "status": "str",
+        "status_reason": "str",
+        "confidence": "float",
+        "confidence_band": "str",
+        "source_document_id": "str",
+        "conflict_ids": [
+          "str",
+          "\u00d72"
+        ],
+        "has_conflict": "bool",
+        "history_count": "int"
+      },
+      "\u00d72"
+    ]
+  },
+  "medications.history": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001/medications/metformin/history",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_e5a0a3d96bbd43a3",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": [
+      {
+        "id": "str",
+        "canonical_name": "str",
+        "raw_name": "str",
+        "dose_text": "str",
+        "strength_value": "float",
+        "strength_unit": "str",
+        "frequency_code": "str",
+        "frequency_text": "str",
+        "status": "str",
+        "document_date": "str",
+        "source_document_filename": "str",
+        "source_document_id": "str",
+        "created_at": "str"
+      },
+      "\u00d73"
+    ]
+  },
+  "investigations.list": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001/investigations",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_316e37748f8b43db",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": [
+      {
+        "id": "str",
+        "test_name": "str",
+        "test_name_raw": "str",
+        "value_numeric": "float",
+        "value_text": "str",
+        "unit": "str",
+        "reference_low": "float",
+        "reference_high": "float",
+        "reference_text": "str",
+        "abnormal_flag": "str",
+        "observed_date": "str",
+        "confidence": "float",
+        "source_document_id": "str",
+        "group_key": "str"
+      },
+      "\u00d73"
+    ]
+  },
+  "investigations.trend": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001/investigations/pat_demo_patient_001:hba1c/trend",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_e850dc4d8014447d",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": {
+      "test": "str",
+      "unit": "str",
+      "series": [
+        {
+          "id": "str",
+          "value": "float",
+          "unit": "str",
+          "date": "str",
+          "abnormal_flag": "str",
+          "iso_date": "str"
+        },
+        "\u00d73"
+      ],
+      "direction": "str",
+      "delta": "float",
+      "description": "str",
+      "latest_value": "float",
+      "latest_flag": "str"
+    }
+  },
+  "investigations.trendEmpty": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001/investigations/pat_demo_patient_001:unknown/trend",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_90226e08a69745ba",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": {
+      "test": "str",
+      "series": "[]",
+      "direction": "str",
+      "delta": "float",
+      "description": "str"
+    }
+  },
+  "issues.list": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001/issues",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_bbeebdd2b928429f",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": [
+      {
+        "id": "str",
+        "patient_id": "str",
+        "issue_type": "str",
+        "severity": "str",
+        "title": "str",
+        "description": "str",
+        "related_document_ids": [
+          "str",
+          "\u00d72"
+        ],
+        "related_fact_ids": [
+          "str",
+          "\u00d72"
+        ],
+        "detail_json": {
+          "drug": "str",
+          "source_1": "\u2026",
+          "source_2": "\u2026"
+        },
+        "status": "str",
+        "doctor_note": "NoneType",
+        "created_at": "str",
+        "updated_at": "str"
+      },
+      "\u00d74"
+    ]
+  },
+  "brief.latest": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001/brief/latest",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_14ab05de662e4df0",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": {
+      "patient": {
+        "id": "str",
+        "name": "str",
+        "age": "int"
+      },
+      "specialty": "str",
+      "generated_at": "str",
+      "chief_complaint": {
+        "text": "str",
+        "evidence_ids": [
+          "str",
+          "\u00d71"
+        ],
+        "confidence_band": "str"
+      },
+      "relevant_history": [
+        {
+          "text": "str",
+          "evidence_ids": [
+            "str",
+            "\u00d71"
+          ],
+          "confidence_band": "str"
+        },
+        "\u00d71"
+      ],
+      "current_medications": [
+        {
+          "name": "str",
+          "strength": "str",
+          "dose": "str",
+          "frequency": "str",
+          "status": "str",
+          "evidence_ids": [
+            "str",
+            "\u00d71"
+          ],
+          "confidence_band": "str",
+          "conflict_flag": "bool"
+        },
+        "\u00d74"
+      ],
+      "allergies": [
+        {
+          "text": "str",
+          "evidence_ids": [
+            "str",
+            "\u00d71"
+          ],
+          "status": "str"
+        },
+        "\u00d71"
+      ],
+      "recent_investigations": [
+        {
+          "test": "str",
+          "value": "str",
+          "unit": "str",
+          "reference": "str",
+          "date": "str",
+          "abnormal": "str",
+          "evidence_ids": [
+            "str",
+            "\u00d71"
+          ]
+        },
+        "\u00d73"
+      ],
+      "important_trends": [
+        {
+          "test": "str",
+          "series": [
+            "\u2026",
+            "\u00d73"
+          ],
+          "direction": "str",
+          "description": "str",
+          "evidence_ids": [
+            "str",
+            "\u00d73"
+          ]
+        },
+        "\u00d73"
+      ],
+      "attention_items": [
+        {
+          "text": "str",
+          "severity": "str",
+          "evidence_ids": "[]"
+        },
+        "\u00d71"
+      ],
+      "contradictions": [
+        {
+          "issue_id": "str",
+          "text": "str",
+          "sources": "[]"
+        },
+        "\u00d72"
+      ],
+      "missing_information": [
+        {
+          "prompt": "str",
+          "reason": "str"
+        },
+        "\u00d71"
+      ],
+      "evidence_shortcuts": [
+        {
+          "evidence_id": "str",
+          "label": "str",
+          "document_id": "str",
+          "page": "int"
+        },
+        "\u00d78"
+      ],
+      "disclaimer": "str",
+      "readiness_score": "int"
+    }
+  },
+  "consultations.list": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001/consultations",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_5bae5756516e4d5e",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": [
+      {
+        "id": "str",
+        "patient_id": "str",
+        "specialty": "str",
+        "status": "str",
+        "current_version_id": "str",
+        "approved_at": "str",
+        "approved_by": "str",
+        "created_at": "str"
+      },
+      "\u00d71"
+    ]
+  },
+  "specialties.list": {
+    "method": "GET",
+    "path": "/api/v1/specialties",
+    "body": null,
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_direct",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": [
+      {
+        "id": "str",
+        "name": "str",
+        "description": "str"
+      },
+      "\u00d77"
+    ]
+  },
+  "voice.list (expect 405)": {
+    "method": "GET",
+    "path": "/api/v1/patients/pat_demo_patient_001/voice",
+    "body": null,
+    "status": 405,
+    "envelope_keys": [
+      "success",
+      "error",
+      "meta"
+    ],
+    "success": false,
+    "meta": {
+      "request_id": "req_5d26a1efc24642e3"
+    },
+    "all_sources": [],
+    "error_code": "HTTP_ERROR",
+    "shape": "NoneType"
+  },
+  "issues.recompute": {
+    "method": "POST",
+    "path": "/api/v1/patients/pat_demo_patient_001/issues/recompute",
+    "body": {},
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_7ed5add1d2f14112",
+      "source": "db"
+    },
+    "all_sources": [
+      "db"
+    ],
+    "error_code": null,
+    "shape": [
+      {
+        "id": "str",
+        "patient_id": "str",
+        "issue_type": "str",
+        "severity": "str",
+        "title": "str",
+        "description": "str",
+        "related_document_ids": [
+          "str",
+          "\u00d72"
+        ],
+        "related_fact_ids": [
+          "str",
+          "\u00d72"
+        ],
+        "detail_json": {
+          "drug": "str",
+          "source_1": "\u2026",
+          "source_2": "\u2026"
+        },
+        "status": "str",
+        "doctor_note": "NoneType",
+        "created_at": "str",
+        "updated_at": "str"
+      },
+      "\u00d75"
+    ]
+  },
+  "brief.generate": {
+    "method": "POST",
+    "path": "/api/v1/patients/pat_demo_patient_001/brief",
+    "body": {
+      "specialty": "general_medicine"
+    },
+    "status": 200,
+    "envelope_keys": [
+      "success",
+      "data",
+      "meta"
+    ],
+    "success": true,
+    "meta": {
+      "request_id": "req_f21e7f4702634edf",
+      "source": "llm"
+    },
+    "all_sources": [
+      "llm"
+    ],
+    "error_code": null,
+    "shape": {
+      "patient": {
+        "id": "str",
+        "name": "str",
+        "age": "int"
+      },
+      "specialty": "str",
+      "generated_at": "str",
+      "chief_complaint": {
+        "text": "str",
+        "evidence_ids": [
+          "str",
+          "\u00d71"
+        ],
+        "confidence_band": "str"
+      },
+      "relevant_history": [
+        {
+          "text": "str",
+          "evidence_ids": [
+            "str",
+            "\u00d71"
+          ],
+          "confidence_band": "str"
+        },
+        "\u00d71"
+      ],
+      "current_medications": [
+        {
+          "name": "str",
+          "strength": "str",
+          "dose": "str",
+          "frequency": "str",
+          "status": "str",
+          "evidence_ids": [
+            "str",
+            "\u00d71"
+          ],
+          "confidence_band": "str",
+          "conflict_flag": "bool"
+        },
+        "\u00d74"
+      ],
+      "allergies": [
+        {
+          "text": "str",
+          "evidence_ids": [
+            "str",
+            "\u00d71"
+          ],
+          "status": "str"
+        },
+        "\u00d71"
+      ],
+      "recent_investigations": [
+        {
+          "test": "str",
+          "value": "str",
+          "unit": "str",
+          "reference": "str",
+          "date": "str",
+          "abnormal": "str",
+          "evidence_ids": [
+            "str",
+            "\u00d71"
+          ]
+        },
+        "\u00d73"
+      ],
+      "important_trends": [
+        {
+          "test": "str",
+          "series": [
+            "\u2026",
+            "\u00d73"
+          ],
+          "direction": "str",
+          "description": "str",
+          "evidence_ids": [
+            "str",
+            "\u00d73"
+          ]
+        },
+        "\u00d73"
+      ],
+      "attention_items": [
+        {
+          "text": "str",
+          "severity": "str",
+          "evidence_ids": "[]"
+        },
+        "\u00d71"
+      ],
+      "contradictions": [
+        {
+          "issue_id": "str",
+          "text": "str",
+          "sources": "[]"
+        },
+        "\u00d72"
+      ],
+      "missing_information": [
+        {
+          "prompt": "str",
+          "reason": "str"
+        },
+        "\u00d71"
+      ],
+      "evidence_shortcuts": [
+        {
+          "evidence_id": "str",
+          "label": "str",
+          "document_id": "str",
+          "page": "int"
+        },
+        "\u00d78"
+      ],
+      "disclaimer": "str"
+    }
+  }
+}

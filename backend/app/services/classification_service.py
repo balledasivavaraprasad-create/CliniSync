@@ -1,0 +1,68 @@
+from pathlib import Path
+from typing import Dict, Any, Optional
+import structlog
+from app.ai.gateway import llm_gateway
+from app.schemas.ai_contracts import DocClassification
+from app.schemas.common import DocumentType
+
+logger = structlog.get_logger(__name__)
+
+class ClassificationService:
+    def __init__(self) -> None:
+        prompt_path = Path(__file__).parent.parent / "ai" / "prompts" / "classify_document.md"
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            self.system_prompt = f.read()
+
+    def _heuristic_check(self, text: str) -> Optional[DocumentType]:
+        lower = text.lower()
+        if "discharge summary" in lower or ("date of admission" in lower and "date of discharge" in lower):
+            return DocumentType.discharge_summary
+        if any(k in lower for k in ["rx", "tab.", "tablet", "capsule", "syrup", "dosage:"]):
+            if "hba1c" not in lower and "reference range" not in lower:
+                return DocumentType.prescription
+        if any(k in lower for k in ["reference range", "lab report", "serum", "lipid profile", "complete blood count", "hba1c"]):
+            return DocumentType.lab_report
+        if any(k in lower for k in ["x-ray", "mri", "ct scan", "ultrasound", "impression:"]):
+            return DocumentType.imaging_report
+        if any(k in lower for k in ["consultation note", "chief complaint", "history of present illness", "examination:"]):
+            return DocumentType.consultation_note
+        return None
+
+    async def classify(self, text_content: str, hint: Optional[str] = None) -> DocClassification:
+        heuristic = self._heuristic_check(text_content)
+        truncated_text = text_content[:4000]
+
+        messages = [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": f"Classify this document based on the text:\n<document_text>\n{truncated_text}\n</document_text>"}
+        ]
+
+        try:
+            res: DocClassification = llm_gateway.complete_json(
+                task="classify",
+                messages=messages,
+                schema=DocClassification,
+                slot="llm_extract"
+            )
+
+            # Cross-check heuristic
+            if heuristic and res.document_type != heuristic:
+                logger.info("classification_heuristic_divergence", llm_type=res.document_type, heuristic=heuristic)
+                # If LLM confidence is low, favor heuristic or adjust confidence
+                if res.confidence < 0.8:
+                    res.document_type = heuristic
+                    res.confidence = 0.75
+
+            return res
+        except Exception as e:
+            logger.warning("classification_llm_failed_fallback_to_heuristic", error=str(e))
+            doc_type = heuristic or DocumentType.other
+            return DocClassification(
+                document_type=doc_type,
+                document_date=None,
+                date_confidence=0.0,
+                confidence=0.60 if heuristic else 0.40,
+                language="en"
+            )
+
+classification_service = ClassificationService()

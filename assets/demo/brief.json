@@ -1,0 +1,178 @@
+{
+  "success": true,
+  "data": {
+    "patient": {
+      "id": "pat_demo_patient_001",
+      "name": "Demo Patient",
+      "age": 52
+    },
+    "specialty": "general_medicine",
+    "generated_at": "2026-10-04T17:12:29.116164+00:00",
+    "chief_complaint": {
+      "text": "Polyuria, polydipsia, and fatigue documented at initial consultation.",
+      "evidence_ids": [
+        "doc_demo_001_consult_jan"
+      ],
+      "confidence_band": "high"
+    },
+    "relevant_history": [
+      {
+        "text": "Diagnosed with Type 2 Diabetes Mellitus in Jan 2026; steady weight 78 kg.",
+        "evidence_ids": [
+          "doc_demo_001_consult_jan",
+          "doc_demo_004_consult_jun"
+        ],
+        "confidence_band": "high"
+      }
+    ],
+    "current_medications": [
+      {
+        "name": "Metformin",
+        "strength": "500 mg",
+        "dose": "500 mg",
+        "frequency": "twice daily (BD)",
+        "status": "current",
+        "evidence_ids": [
+          "doc_demo_005_rx_sep"
+        ],
+        "confidence_band": "high",
+        "conflict_flag": true
+      },
+      {
+        "name": "Glimepiride",
+        "strength": "1 mg",
+        "dose": "1 mg",
+        "frequency": "once daily (OD)",
+        "status": "current",
+        "evidence_ids": [
+          "doc_demo_005_rx_sep"
+        ],
+        "confidence_band": "high",
+        "conflict_flag": false
+      }
+    ],
+    "allergies": [
+      {
+        "text": "Allergy status not documented in records.",
+        "evidence_ids": [
+          "doc_demo_001_consult_jan"
+        ],
+        "status": "not_documented"
+      }
+    ],
+    "recent_investigations": [
+      {
+        "test": "HbA1c",
+        "value": "7.8",
+        "unit": "%",
+        "reference": "4.0 - 5.6 %",
+        "date": "2026-09-28",
+        "abnormal": "high",
+        "evidence_ids": [
+          "doc_demo_006_discharge_sep"
+        ]
+      },
+      {
+        "test": "Serum Creatinine",
+        "value": "0.9",
+        "unit": "mg/dL",
+        "reference": "0.7 - 1.2 mg/dL",
+        "date": "2026-09-28",
+        "abnormal": "normal",
+        "evidence_ids": [
+          "doc_demo_006_discharge_sep"
+        ]
+      }
+    ],
+    "important_trends": [
+      {
+        "test": "HbA1c",
+        "series": [
+          {
+            "date": "2026-01-10",
+            "value": 8.4,
+            "unit": "%"
+          },
+          {
+            "date": "2026-04-18",
+            "value": 8.0,
+            "unit": "%"
+          },
+          {
+            "date": "2026-09-28",
+            "value": 7.8,
+            "unit": "%"
+          }
+        ],
+        "direction": "down",
+        "description": "HbA1c recorded 8.4% (Jan 2026), 8.0% (Apr 2026), 7.8% (Sep 2026): decreasing across three measurements.",
+        "evidence_ids": [
+          "doc_demo_001_consult_jan",
+          "doc_demo_003_lab_apr",
+          "doc_demo_006_discharge_sep"
+        ]
+      }
+    ],
+    "attention_items": [
+      {
+        "text": "Medication conflict: Two records on 12/09/2026 contain differing Metformin doses (500 mg BD vs 1000 mg BD).",
+        "severity": "medium",
+        "evidence_ids": [
+          "doc_demo_005_rx_sep"
+        ]
+      },
+      {
+        "text": "Missing information: Allergy status not documented in records.",
+        "severity": "medium",
+        "evidence_ids": [
+          "doc_demo_001_consult_jan"
+        ]
+      }
+    ],
+    "contradictions": [
+      {
+        "issue_id": "iss_metformin_conflict",
+        "text": "Two records on 12/09/2026 contain differing Metformin doses: 500 mg BD vs 1000 mg BD.",
+        "sources": [
+          "doc_demo_005_rx_sep"
+        ]
+      }
+    ],
+    "missing_information": [
+      {
+        "prompt": "Document patient allergy status",
+        "reason": "Critical clinical safety data missing from medical history"
+      },
+      {
+        "prompt": "Confirm initial start date for Metformin therapy",
+        "reason": "Prescription duration noted without exact historic inception date"
+      }
+    ],
+    "evidence_shortcuts": [
+      {
+        "evidence_id": "ev_001",
+        "label": "Initial Diagnosis",
+        "document_id": "doc_demo_001_consult_jan",
+        "page": 1
+      },
+      {
+        "evidence_id": "ev_002",
+        "label": "Updated Rx BD",
+        "document_id": "doc_demo_005_rx_sep",
+        "page": 1
+      },
+      {
+        "evidence_id": "ev_003",
+        "label": "Latest HbA1c 7.8%",
+        "document_id": "doc_demo_006_discharge_sep",
+        "page": 1
+      }
+    ],
+    "disclaimer": "AI-assisted summary of source records. Not a diagnosis or treatment recommendation. Verify against sources.",
+    "readiness_score": 92
+  },
+  "meta": {
+    "request_id": "req_demo_bundle",
+    "source": "fallback"
+  }
+}

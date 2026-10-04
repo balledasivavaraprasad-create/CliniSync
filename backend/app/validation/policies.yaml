@@ -1,0 +1,44 @@
+version: "1.0.0"
+thresholds:
+  gate1_min_fact_confidence: 0.60
+  provenance_fuzzy_threshold: 85
+  judge_min_faithfulness: 4.0
+  judge_min_non_directiveness: 5.0
+  judge_min_non_causality: 4.0
+
+banned_directive_patterns:
+  - "\\b(start|stop|increase|decrease|reduce|titrate|prescribe|administer|discontinue)\\b.*\\b(tab|tablet|cap|capsule|dose|mg|mcg|daily|bd|od)\\b"
+  - "\\byou should (take|start|stop|increase|reduce)\\b"
+  - "\\brecommend (starting|stopping|taking|increasing|reducing)\\b"
+  - "\\bpatient must take\\b"
+
+banned_causal_patterns:
+  - "\\bdue to (metformin|insulin|medication|drug|treatment)\\b"
+  - "\\bcaused by (metformin|insulin|medication|drug|treatment)\\b"
+  - "\\bbecause of (metformin|insulin|medication|drug|treatment)\\b"
+  - "\\bresulting from (metformin|insulin|medication|drug|treatment)\\b"
+  - "\\bleading to improvement in (hba1c|glucose|blood sugar)\\b"
+  - "\\bimproved because\\b"
+
+prompt_injection_patterns:
+  - "ignore previous instructions"
+  - "disregard all previous"
+  - "system prompt"
+  - "as an ai model"
+  - "jailbreak"
+  - "<script"
+  - "curl "
+  - "wget "
+
+severities:
+  schema_violation: block
+  provenance_unverified: block
+  numeric_inconsistency: block
+  directive_language: block
+  causality_language: block
+  hallucinated_entity: block
+  conflict_integrity_violation: block
+  missing_required_section: block
+  prompt_injection: block
+  low_confidence_fact: warn
+  missing_information: info

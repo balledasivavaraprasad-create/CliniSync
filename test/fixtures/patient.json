@@ -1,0 +1,1 @@
+{"success":true,"data":{"id":"pat_demo_patient_001","full_name":"Demo Patient","date_of_birth":"1974-05-14","age_years":52,"sex":"male","contact_ref":"+91 98765 43210","is_demo":true,"last_activity_at":"2026-09-28T14:00:00","created_at":"2026-10-04T17:12:29.103530"},"meta":{"request_id":"req_5b6a8413bb6b4a80","source":"db"}}

@@ -1,0 +1,45 @@
+{
+  "success": true,
+  "data": {
+    "document_id": "doc_demo_005_rx_sep",
+    "status": "complete",
+    "current_stage": "complete",
+    "stages": [
+      {
+        "name": "uploaded",
+        "label": "Uploaded",
+        "completed": true
+      },
+      {
+        "name": "extracting_text",
+        "label": "Extracting Text",
+        "completed": true
+      },
+      {
+        "name": "classifying",
+        "label": "Classifying",
+        "completed": true
+      },
+      {
+        "name": "extracting_entities",
+        "label": "Extracting Clinical Information",
+        "completed": true
+      },
+      {
+        "name": "normalizing",
+        "label": "Normalizing & Linking Evidence",
+        "completed": true
+      },
+      {
+        "name": "complete",
+        "label": "Complete",
+        "completed": true
+      }
+    ],
+    "error_code": null
+  },
+  "meta": {
+    "request_id": "req_demo_bundle",
+    "source": "fallback"
+  }
+}
