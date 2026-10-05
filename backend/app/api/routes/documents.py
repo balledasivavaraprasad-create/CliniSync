@@ -26,8 +26,8 @@ async def upload_document(
     user: CurrentUser = Depends(get_current_user),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import resolve_patient_id
-    pid = resolve_patient_id(patient_id)
+    from app.api.deps import require_patient_id
+    pid = require_patient_id(db, patient_id)
     content = await file.read()
     doc, is_duplicate = DocumentService.store_document(
         db=db,
@@ -61,8 +61,8 @@ async def upload_document_legacy(
     user: CurrentUser = Depends(get_current_user),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import resolve_patient_id
-    pid = resolve_patient_id(patient_id or "pat_demo_patient_001")
+    from app.api.deps import require_patient_id
+    pid = require_patient_id(db, patient_id or "pat_demo_patient_001")
     content = await file.read()
     doc, is_duplicate = DocumentService.store_document(
         db=db,
@@ -92,8 +92,8 @@ def list_patient_documents(
     db: Session = Depends(get_db_session),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import resolve_patient_id
-    pid = resolve_patient_id(patient_id)
+    from app.api.deps import require_patient_id
+    pid = require_patient_id(db, patient_id)
     docs = DocumentService.list_by_patient(db, pid)
     return {
         "success": True,
@@ -108,9 +108,9 @@ def list_documents_query(
     db: Session = Depends(get_db_session),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import resolve_patient_id
+    from app.api.deps import require_patient_id
     if patient_id:
-        pid = resolve_patient_id(patient_id)
+        pid = require_patient_id(db, patient_id)
         docs = DocumentService.list_by_patient(db, pid)
     else:
         docs = db.query(Document).order_by(Document.created_at.desc()).limit(100).all()

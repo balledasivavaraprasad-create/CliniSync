@@ -12,6 +12,7 @@ class SectionReveal extends StatefulWidget {
     this.stagger = const Duration(milliseconds: 40),
     this.duration = const Duration(milliseconds: 280),
     this.offset = 12,
+    this.delay = Duration.zero,
   });
 
   final Widget child;
@@ -22,6 +23,10 @@ class SectionReveal extends StatefulWidget {
   final Duration duration;
   final double offset;
 
+  /// Extra hold-off before this section reveals — used to let a headline
+  /// animation finish before the copy below it starts.
+  final Duration delay;
+
   @override
   State<SectionReveal> createState() => _SectionRevealState();
 }
@@ -30,7 +35,7 @@ class _SectionRevealState extends State<SectionReveal>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: widget.duration,
+    duration: _scaled(widget.duration),
   );
 
   @override
@@ -46,11 +51,12 @@ class _SectionRevealState extends State<SectionReveal>
       _controller.value = 1;
       return;
     }
-    final delay = widget.stagger * widget.index;
-    if (delay == Duration.zero) {
+    final Duration wait =
+        _scaled(widget.delay + widget.stagger * widget.index);
+    if (wait == Duration.zero) {
       _controller.forward();
     } else {
-      Future<void>.delayed(delay, () {
+      Future<void>.delayed(wait, () {
         if (mounted) _controller.forward();
       });
     }
@@ -83,6 +89,26 @@ class _SectionRevealState extends State<SectionReveal>
     );
   }
 }
+
+/// QA multiplier for every duration in this file, as a percentage.
+///
+/// Defaults to 100 (no scaling). Build with
+/// `--dart-define=CLINSYNC_MOTION_SCALE=800` to slow all motion down enough to
+/// screenshot mid-animation (`tools/capture_hero_frames.py`); production builds
+/// never set it.
+///
+/// Declared as an `int` percentage rather than a `double` because
+/// `double.fromEnvironment` is not a constant expression on this SDK.
+const int _motionScalePercent =
+    int.fromEnvironment('CLINSYNC_MOTION_SCALE', defaultValue: 100);
+
+const double _motionScale =
+    _motionScalePercent <= 0 ? 1.0 : _motionScalePercent / 100.0;
+
+/// [duration] scaled by the QA motion multiplier.
+Duration _scaled(Duration duration) => Duration(
+      microseconds: (duration.inMicroseconds * _motionScale).round(),
+    );
 
 /// Reveals a list of children with a per-index stagger.
 class StaggeredColumn extends StatelessWidget {
@@ -155,7 +181,7 @@ class _PressScaleState extends State<PressScale> {
     if (!reduce) {
       content = AnimatedScale(
         scale: _down ? widget.scale : 1,
-        duration: widget.duration,
+        duration: _scaled(widget.duration),
         curve: Curves.easeOut,
         child: content,
       );
@@ -198,7 +224,7 @@ class _SoftPulseState extends State<SoftPulse>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
-    duration: widget.period,
+    duration: _scaled(widget.period),
   );
 
   @override
@@ -304,12 +330,153 @@ class AnimatedCount extends StatelessWidget {
     }
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0, end: value),
-      duration: duration,
+      duration: _scaled(duration),
       curve: Curves.easeOutCubic,
       builder: (BuildContext context, double v, Widget? _) {
         return builder(context, formatter?.call(v) ?? v.toStringAsFixed(0));
       },
     );
+  }
+}
+
+/// The landing page's hero-title reveal, line by line.
+///
+/// `index.html:145-149` + `assets/css/style.css:290-295`:
+/// ```css
+/// .hero__title .line    { display:block; overflow:hidden; padding-block:.06em }
+/// .hero__title .line__in{ display:inline-block; transform:translateY(115%);
+///                        transition:transform 1.1s var(--ease-out) }
+/// .is-ready .hero__title .line__in { transform:translateY(0) }
+/// .hero__title .line:nth-child(2) .line__in { transition-delay:.09s }
+/// .hero__title .line:nth-child(3) .line__in { transition-delay:.18s }
+/// ```
+///
+/// Each line is clipped by its own box and the text starts one line-height
+/// below it, so the glyphs appear to be wiped upward rather than faded. The
+/// landing page uses `--ease-out: cubic-bezier(.16,1,.3,1)`, which is exactly
+/// Flutter's [Curves.easeOutExpo].
+///
+/// Trigger is a post-frame callback — the landing page's equivalent is the
+/// `is-ready` class the preloader adds. Plays once per mount and short-circuits
+/// to the finished state under `MediaQuery.disableAnimations`.
+class LineReveal extends StatefulWidget {
+  const LineReveal({
+    super.key,
+    required this.lines,
+    required this.lineHeight,
+    this.duration = const Duration(milliseconds: 1100),
+    this.stagger = const Duration(milliseconds: 90),
+    this.startOffset = 1.15,
+    this.clipPadding = const EdgeInsets.symmetric(vertical: 0.06),
+  });
+
+  /// One entry per line, already styled by the caller. Each must be a single
+  /// line of text at [lineHeight].
+  final List<Widget> lines;
+
+  /// Height of one line, in logical pixels — normally
+  /// `fontSize × TextStyle.height` from the caller's style. Passed explicitly
+  /// because the reveal translates by a percentage of the line box and cannot
+  /// know the box height before layout.
+  final double lineHeight;
+
+  final Duration duration;
+  final Duration stagger;
+
+  /// Fraction of [lineHeight] the text starts below its clip. The landing page
+  /// uses `translateY(115%)`.
+  final double startOffset;
+
+  /// Padding inside the clip box, so ascenders/descenders are not shaved.
+  final EdgeInsets clipPadding;
+
+  @override
+  State<LineReveal> createState() => _LineRevealState();
+}
+
+class _LineRevealState extends State<LineReveal>
+    with SingleTickerProviderStateMixin {
+  /// The controller spans every line's delay **and** its own ramp, so line *n*
+  /// finishes `stagger × n` later than line 0 — a true stagger rather than
+  /// three ramps that all end together.
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: _scaled(widget.duration +
+        widget.stagger * (widget.lines.isEmpty ? 0 : widget.lines.length - 1)),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _play());
+  }
+
+  void _play() {
+    if (!mounted) return;
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      _controller.value = 1;
+      return;
+    }
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      return _lines(1);
+    }
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (BuildContext context, Widget? _) => _lines(_controller.value),
+    );
+  }
+
+  Widget _lines(double t) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        for (int i = 0; i < widget.lines.length; i++)
+          ClipRect(
+            child: SizedBox(
+              height: widget.lineHeight + widget.clipPadding.vertical,
+              child: OverflowBox(
+                alignment: Alignment.topLeft,
+                minHeight: 0,
+                maxHeight: double.infinity,
+                child: Transform.translate(
+                  offset: Offset(0, _lineOffset(t, i)),
+                  child: widget.lines[i],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Scaled per-line ramp and per-line delay, in microseconds.
+  ///
+  /// These must be the *scaled* values, not `widget.duration`/`widget.stagger`:
+  /// `t` is progress through the scaled controller, so dividing it by an
+  /// unscaled duration would saturate the ramp almost immediately and the lines
+  /// would appear to jump straight to their final position.
+  late final int _lineUs = _scaled(widget.duration).inMicroseconds;
+  late final int _staggerUs = _scaled(widget.stagger).inMicroseconds;
+
+  /// How far line [index] still sits below its clip box, in logical pixels.
+  double _lineOffset(double t, int index) {
+    final double nowUs = t * _controller.duration!.inMicroseconds;
+    final double local = ((nowUs - _staggerUs * index) / _lineUs).clamp(0.0, 1.0);
+    return widget.startOffset *
+        widget.lineHeight *
+        (1 - Curves.easeOutExpo.transform(local));
   }
 }
 

@@ -13,13 +13,17 @@ class SpecialtyItem(BaseModel):
 
 
 SPECIALTIES = [
+    # Labels are matched against `app.schemas.common.Specialty` and the Flutter
+    # `Specialty` enum. `other` is "Other" on both sides — it previously read
+    # "Other Specialty" here only, so the picker showed a different word than
+    # the offline mirror (docs/frontend/API_MISMATCHES.md M-09).
     SpecialtyItem(id="general_medicine", name="General Medicine", description="Comprehensive primary and internal care overview"),
     SpecialtyItem(id="diabetology", name="Diabetology & Endocrinology", description="Glycemic control, metabolic profiles, renal protection"),
     SpecialtyItem(id="cardiology", name="Cardiology", description="Cardiovascular risks, blood pressure, lipid panels, antiplatelets"),
     SpecialtyItem(id="orthopedics", name="Orthopedics", description="Musculoskeletal assessments, surgical history, mobility"),
     SpecialtyItem(id="neurology", name="Neurology", description="Neurological evaluations, cognitive and motor tracking"),
     SpecialtyItem(id="pediatrics", name="Pediatrics", description="Developmental, pediatric dosing and immunization tracking"),
-    SpecialtyItem(id="other", name="Other Specialty", description="General clinical synthesis"),
+    SpecialtyItem(id="other", name="Other", description="General clinical synthesis"),
 ]
 
 

@@ -226,8 +226,10 @@ class _BriefBody extends StatelessWidget {
             ),
             child: TicketCard(
               headerLabel: 'CLINICAL BRIEF',
-              statusLabel: 'AI-generated',
-              headerIconName: 'sparkles',
+              statusLabel:
+                  brief.servedByTemplate ? 'From records' : 'AI-generated',
+              headerIconName:
+                  brief.servedByTemplate ? 'clipboardList' : 'sparkles',
               connectorIconName: 'clipboardList',
               connectorCaption: 'Summary',
               leftBlock: TicketRouteBlock(
@@ -269,18 +271,26 @@ class _BriefBody extends StatelessWidget {
         ),
 
         // ── AI / unverified marker + disclaimer
-        const SectionReveal(
+        //
+        // When the backend assembled the brief from records with its
+        // deterministic template (no model involved), saying "AI-generated"
+        // would be inaccurate. Both variants still withhold approval: nothing
+        // here becomes clinical memory until the doctor approves it (§6.6).
+        SectionReveal(
           index: 1,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(
+            padding: const EdgeInsets.fromLTRB(
               AppSpacing.screenH,
               AppSpacing.md,
               AppSpacing.screenH,
               0,
             ),
             child: ClinNoticeBanner(
-              message:
-                  'AI-generated · Unverified. Nothing here becomes clinical memory until you approve it.',
+              message: brief.servedByTemplate
+                  ? 'Assembled directly from the records · Unverified. '
+                      'Nothing here becomes clinical memory until you approve it.'
+                  : 'AI-generated · Unverified. '
+                      'Nothing here becomes clinical memory until you approve it.',
               tone: ClinNoticeTone.primary,
               icon: 'shieldAlert',
             ),

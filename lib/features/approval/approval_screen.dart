@@ -197,6 +197,26 @@ class _ApprovalBody extends StatelessWidget {
   final void Function(String name, bool value) onToggle;
   final VoidCallback onRecompute;
 
+  /// Why approval is on hold, phrased for whoever is reading it.
+  ///
+  /// Gate 1 fails closed when the faithfulness judge is unreachable. That is the
+  /// safe outcome, but it is a temporary outage rather than a defect in the
+  /// doctor's draft, so it gets its own wording: "try again", not "fix your
+  /// notes".
+  static String _blockedMessage(ApprovalPreview preview) {
+    if (preview.blockedByInfrastructure) {
+      return 'The automated faithfulness check could not run, so approval is '
+          'paused to keep unverified content out of clinical memory. Nothing '
+          'here is wrong with your notes — try again in a moment.';
+    }
+    if (preview.blockers.isEmpty) {
+      return 'This consultation cannot be approved yet.';
+    }
+    return 'Approval is on hold. ${preview.blockers.length} item'
+        '${preview.blockers.length == 1 ? '' : 's'} must be acknowledged '
+        'first. Nothing will be marked approved until they are.';
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<ApprovalCheck> required = <ApprovalCheck>[
@@ -263,14 +283,15 @@ class _ApprovalBody extends StatelessWidget {
                 AppSpacing.screenH,
                 0,
               ),
+              // An infrastructure outage reads differently from a problem with
+              // the note: nothing is wrong with the doctor's draft, and the fix
+              // is to try again rather than to edit it.
               child: ClinNoticeBanner(
-                message: preview.blockers.isEmpty
-                    ? 'This consultation cannot be approved yet.'
-                    : 'Approval is on hold. ${preview.blockers.length} item'
-                        '${preview.blockers.length == 1 ? '' : 's'} must be acknowledged first. '
-                        'Nothing will be marked approved until they are.',
+                message: _blockedMessage(preview),
                 tone: ClinNoticeTone.warning,
-                icon: 'alertTriangle',
+                icon: preview.blockedByInfrastructure
+                    ? 'wifiOff'
+                    : 'alertTriangle',
               ),
             ),
           ),

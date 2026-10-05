@@ -22,6 +22,7 @@ class DoctorBrief {
     this.missingInformation = const <BriefMissing>[],
     this.evidenceShortcuts = const <EvidenceShortcut>[],
     this.disclaimer,
+    this.servedByTemplate = false,
   });
 
   factory DoctorBrief.fromJson(Map<String, dynamic> json) {
@@ -63,7 +64,14 @@ class DoctorBrief {
           .map(EvidenceShortcut.fromJson)
           .toList(growable: false),
       disclaimer: asString(json['disclaimer']),
+      servedByTemplate: _isTemplateSourced(json['generation_source']),
     );
+  }
+
+  /// `llm`, `fallback_template` and `seed` all mean no model wrote this.
+  static bool _isTemplateSourced(Object? generationSource) {
+    final String s = asString(generationSource) ?? '';
+    return s.isNotEmpty && s != 'llm';
   }
 
   final String patientId;
@@ -82,6 +90,41 @@ class DoctorBrief {
   final List<BriefMissing> missingInformation;
   final List<EvidenceShortcut> evidenceShortcuts;
   final String? disclaimer;
+
+  /// True when the backend assembled this brief from records with its
+  /// deterministic template instead of asking the model.
+  ///
+  /// Read from the payload's `generation_source` (`llm` | `fallback_template` |
+  /// `seed`), which the backend now fills on every read path, so the label is
+  /// right even for a brief this session did not generate.
+  final bool servedByTemplate;
+
+  /// Copy a brief with the generation provenance attached.
+  ///
+  /// Used when the server answers an older contract that omits
+  /// `generation_source` — there the envelope's `meta.source` is the only signal.
+  /// It never turns the flag back off: a payload that says the template wrote
+  /// this keeps saying so.
+  DoctorBrief withSource(String envelopeSource) => DoctorBrief(
+        patientId: patientId,
+        patientName: patientName,
+        patientAge: patientAge,
+        specialty: specialty,
+        generatedAt: generatedAt,
+        chiefComplaint: chiefComplaint,
+        relevantHistory: relevantHistory,
+        currentMedications: currentMedications,
+        allergies: allergies,
+        recentInvestigations: recentInvestigations,
+        importantTrends: importantTrends,
+        attentionItems: attentionItems,
+        contradictions: contradictions,
+        missingInformation: missingInformation,
+        evidenceShortcuts: evidenceShortcuts,
+        disclaimer: disclaimer,
+        servedByTemplate:
+            servedByTemplate || envelopeSource == 'fallback',
+      );
 
   String get specialtyLabel => specialty.label;
   String get generatedLabel => AppDate.stamp(generatedAt);

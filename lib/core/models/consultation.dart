@@ -416,6 +416,28 @@ class ApprovalPreview {
           (ApprovalCheck c) => !c.passed && c.severity == CheckSeverity.block)
       .toList(growable: false);
 
+  /// Blockers that report an unreachable validation service rather than a
+  /// problem with the consultation itself.
+  ///
+  /// Gate 1 fails closed when the faithfulness judge cannot run (§12.1), which
+  /// is the right clinical call but a *temporary infrastructure* problem. A
+  /// doctor must not read that as "your note is wrong" — the wording and the
+  /// retry affordance differ.
+  List<ApprovalCheck> get infrastructureBlockers => blockers
+      .where((ApprovalCheck c) => _isUnavailable(c.name) || _isUnavailable(c.detail))
+      .toList(growable: false);
+
+  static bool _isUnavailable(String text) {
+    final String t = text.toLowerCase();
+    return t.contains('unavailable') ||
+        t.contains('llm_unavailable') ||
+        t.contains('service is down') ||
+        t.contains('timeout');
+  }
+
+  /// True when the block is an outage rather than a problem with the note.
+  bool get blockedByInfrastructure => infrastructureBlockers.isNotEmpty;
+
   List<ApprovalCheck> get warnings => checks
       .where((ApprovalCheck c) => !c.passed && c.severity == CheckSeverity.warn)
       .toList(growable: false);

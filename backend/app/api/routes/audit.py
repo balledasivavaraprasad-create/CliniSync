@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db_session, get_current_user, CurrentUser
+from app.api.deps import get_db_session, get_current_user, CurrentUser, require_patient_id
 from app.models.audit_log import AuditLog
 from app.schemas.common import SuccessResponse
 
@@ -32,6 +32,7 @@ def get_patient_audit_log(
     db: Session = Depends(get_db_session),
     user: CurrentUser = Depends(get_current_user),
 ):
+    patient_id = require_patient_id(db, patient_id)
     query = db.query(AuditLog).filter(AuditLog.patient_id == patient_id)
     if entity:
         query = query.filter(AuditLog.entity_type == entity)

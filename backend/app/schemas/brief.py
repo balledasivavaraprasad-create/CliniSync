@@ -100,3 +100,8 @@ class DoctorBrief(BaseModel):
     missing_information: List[BriefMissingInfoItem] = []
     evidence_shortcuts: List[BriefEvidenceShortcut] = []
     disclaimer: str = "AI-assisted summary of source records. Not a diagnosis or treatment recommendation. Verify against sources."
+    # `llm` | `fallback_template` | `seed`. Optional so briefs stored before this
+    # field existed still validate; the read paths fill it in from the DB row, so
+    # a client can tell a model-written brief from a deterministically assembled
+    # one even when it did not generate the brief itself.
+    generation_source: Optional[str] = None

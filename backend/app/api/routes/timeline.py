@@ -17,8 +17,8 @@ def get_timeline(
     db: Session = Depends(get_db_session),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import resolve_patient_id
-    pid = resolve_patient_id(patient_id)
+    from app.api.deps import require_patient_id
+    pid = require_patient_id(db, patient_id)
     events = timeline_service.get_timeline(
         db=db,
         patient_id=pid,

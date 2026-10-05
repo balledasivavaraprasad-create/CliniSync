@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query, Body, status
 from sqlalchemy.orm import Session
 import json
 
-from app.api.deps import get_db_session, get_current_user, get_request_id, CurrentUser
+from app.api.deps import get_db_session, get_current_user, get_request_id, CurrentUser, require_patient_id
 from app.api.errors import NotFoundError
 from app.services.consultation_service import consultation_service
 from app.schemas.consultation import (
@@ -22,6 +22,7 @@ def list_patient_consultations(
     db: Session = Depends(get_db_session),
     request_id: str = Depends(get_request_id),
 ):
+    patient_id = require_patient_id(db, patient_id)
     consultations = consultation_service.list_by_patient(db, patient_id)
     return {
         "success": True,
@@ -50,6 +51,7 @@ async def create_consultation(
     user: CurrentUser = Depends(get_current_user),
     request_id: str = Depends(get_request_id),
 ):
+    patient_id = require_patient_id(db, patient_id)
     cns, ver = await consultation_service.create_draft(
         db=db,
         patient_id=patient_id,

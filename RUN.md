@@ -19,6 +19,23 @@ PYTHONPATH=backend .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --p
 
 Configuration comes from `.env` in the repository root (pydantic-settings).
 
+### Schema
+
+There is no migration tool, so **the schema is created on boot**: any missing
+table is added automatically. It is additive only — nothing is altered or
+dropped, and existing rows are never touched. A brand-new checkout therefore
+works with no manual database step:
+
+```bash
+PYTHONPATH=backend .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+PYTHONPATH=backend .venv/bin/python -m app.db.seed --reset
+```
+
+`GET /api/v1/health/deep` reports `schema_complete` and `missing_tables`, and
+answers **503** when a dependency the app needs is unavailable. `GET /health` is
+deliberately pure liveness — it never touches the database, so a slow or
+briefly-locked database cannot cause a restart of a healthy server.
+
 ### Seed the demo patient
 
 ```bash
@@ -28,19 +45,22 @@ PYTHONPATH=backend .venv/bin/python -m app.db.seed --reset
 Creates `pat_demo_patient_001` ("Demo Patient", 52) with 6 documents, 7 lab
 results (HbA1c 8.4 → 8.0 → 7.8), 4 medications including the **deliberate
 conflict** (metformin 1000 mg BD vs 500 mg BD), a seeded brief, an approved
-consultation and 2 verified memory rows. Re-running is safe.
-
-> Two backend caveats worth knowing: the schema is **not** created by any
-> migration or `create_all`, so a fresh clone needs the tables created once
-> before the API can answer; and `--reset` is currently always on regardless of
-> the flag. Both are recorded in `docs/frontend/REPO_FINDINGS.md` §12 and
-> `API_MISMATCHES.md` O-01/O-03.
+consultation and 2 verified memory rows. Re-running is safe. It works from any
+directory, and it **is destructive** — it purges the demo patient's records
+first, which it now logs instead of pretending the `--reset` flag means
+something.
 
 ### Backend tests
 
 ```bash
-PYTHONPATH=backend .venv/bin/python -m pytest tests/ -q     # 23 passed
+PYTHONPATH=backend .venv/bin/python -m pytest tests/ -q     # 61 passed
 ```
+
+`tests/test_api_contract.py` pins the contract the Flutter app depends on —
+404s for unknown patients and issues, `group_key` on the medication list, an
+honest `meta.source` on brief generation, both sides of every medication
+conflict, and schema self-healing. If a backend change breaks one of those,
+that suite fails rather than a screen quietly rendering wrong.
 
 ---
 

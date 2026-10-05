@@ -114,7 +114,24 @@ from shifting width as they update (the trend counter animates).
 **Cost:** the serif loses a little of its bookish character in numeric strings.
 That is the right trade for this domain.
 
-## FD-08 — Colours sampled from `appTheme.jpg`, three values differ from §7.1
+## FD-08 — Headline animates with the landing page's line-by-line wipe
+
+**Decided:** the Home hero headline uses a new `LineReveal` primitive — one
+`overflow:hidden` clip box per line, text starting at `translateY(115%)` and
+rising over 1100 ms on `Curves.easeOutExpo`, 90 ms apart. The subtitle waits
+700 ms before revealing.
+
+**Why:** §5.2 maps landing effects to mobile translations and this one has a
+direct counterpart. The values are copied rather than invented:
+`style.css:290-295` gives `translateY(115%)`, `transition: transform 1.1s
+var(--ease-out)` and `transition-delay` `.09s`/`.18s`; `--ease-out` is
+`cubic-bezier(.16,1,.3,1)`, which is exactly Flutter's `Curves.easeOutExpo`.
+
+**Cost:** `LineReveal` requires the caller to pass `lineHeight`, because it
+translates by a percentage of the line box and cannot know that height before
+layout. Passing it explicitly is what makes the effect exact rather than guessed.
+
+## FD-09 — Colours sampled from `appTheme.jpg`, three values differ from §7.1
 
 **Decided:** use the sampled values, not the §7.1 estimates, for
 `bgBackdrop #D3DECE`, `bgCanvas #F6F6F4`, `primary #527A55`, plus a new
@@ -128,7 +145,7 @@ moved. Full sampling log and rationale per token in `DESIGN_TOKENS.md`.
 **Cost:** three token values differ from the plan's table. All are logged here
 and in `DESIGN_TOKENS.md` as required.
 
-## FD-09 — `Demo data` tag comes from fixture provenance, not `meta.source`
+## FD-10 — `Demo data` tag comes from fixture provenance, not `meta.source`
 
 **Decided:** `ApiMeta.isFallback` still reads `meta.source == "fallback"`, but
 repositories mark a payload as demo data when they actually served a bundled
@@ -139,7 +156,7 @@ fixture from `assets/demo/`.
 `API_MISMATCHES.md` M-01). Keying the tag purely off that field would make the
 §6.6 rule-8 tag permanently invisible, which is worse than useless during a demo.
 
-## FD-10 — The specialty catalogue is fetched, with a bundled offline mirror
+## FD-11 — The specialty catalogue is fetched, with a bundled offline mirror
 
 **Decided:** `SpecialtyRepository` reads `GET /specialties` and maps each row to a
 `SpecialtyOption` (`{id, name, description}` + glyph). The `Specialty` enum is
@@ -159,7 +176,7 @@ specialty added on the backend appears in the picker immediately.
 rather than silently collapsing into General Medicine — the earlier enum-only
 version would have done exactly that. Covered by `test/models_test.dart`.
 
-## FD-11 — Medication history is fetched per canonical name
+## FD-12 — Medication history is fetched per canonical name
 
 **Decided:** `GET /patients/{id}/medications` is the index; the history for the
 reconciliation screen is fetched with `?canonical_name=Metformin`.
@@ -169,7 +186,7 @@ to ask the backend "give me the full history of the medication the doctor tapped
 without knowing its canonical name — which the list does return. Documented as
 M-07.
 
-## FD-12 — No login, profile, or settings-as-a-screen
+## FD-13 — No login, profile, or settings-as-a-screen
 
 **Decided:** the app has no auth screens. Connection settings live in the Home
 menu sheet.
@@ -179,7 +196,7 @@ menu sheet.
 would imply a security model that does not exist. The base-URL override is a
 *developer* control, not a user-facing account screen.
 
-## FD-13 — iOS platform folder generated during this work
+## FD-14 — iOS platform folder generated during this work
 
 **Decided:** `flutter create --platforms=ios .` was run to add the `ios/`
 folder; the existing `index.html`, `assets/css/style.css` and `assets/js/main.js`
@@ -190,7 +207,7 @@ requires camera/mic permissions to be declared on every platform the app targets
 Generating the folder is the only way those declarations can exist. Verified that
 `flutter create` touched nothing outside `ios/`.
 
-## FD-14 — Web deep links use the hash strategy
+## FD-15 — Web deep links use the hash strategy
 
 **Decided:** keep Flutter's default hash URL strategy and document it, plus ship
 `tools/serve_web.py` with SPA fallback for hosts that serve paths.
@@ -200,7 +217,7 @@ unknown paths to `index.html`, and `http.server` does not. The hash strategy
 means `build/web` works on any static host with zero configuration, at the cost
 of `/#/patients/<id>`-style URLs.
 
-## FD-15 — Screens hold "no recommendation" language; both conflict sources shown
+## FD-16 — Screens hold "no recommendation" language; both conflict sources shown
 
 **Decided:** medication conflicts render source A and source B side by side with
 no ordering implied, copy is phrased as a question, and trends are described
@@ -210,7 +227,7 @@ without causal language.
 renders directive or causal language", "missing information is phrased as a
 question") and by the API error map in `core/networking/error_messages.dart`.
 
-## FD-16 — Tokens are enforced by a test, not by convention
+## FD-17 — Tokens are enforced by a test, not by convention
 
 **Decided:** `test/components_test.dart` greps `lib/features/**` and
 `lib/shared/**` for raw `Color(0x…)` literals, `fontFamily:` strings and
@@ -219,6 +236,57 @@ one-off `TextStyle`s, and fails if any appear outside `core/theme/`.
 **Why:** "no raw colours/sizes elsewhere in code" is a plan acceptance criterion
 for C06 that is otherwise unenforceable in review. The test turns it into a build
 failure.
+
+---
+
+## FD-18 — A validation outage is never reported as a rejected note
+
+**Decision:** `POST /consultations/{id}/approve` answers **503
+`VALIDATION_UNAVAILABLE`** when Gate 1 fails closed *only* because the
+faithfulness judge could not be reached, and keeps **422 `GATE1_BLOCKED`** for a
+judge that ran and blocked. The Gate 1 check carries a `code` field so the route
+decides from data rather than matching the message. On the client,
+`ApprovalPreview.blockedByInfrastructure` makes the same distinction on the
+preview path, and the two cases get different copy.
+
+**Why:** these are different in kind. 422 `GATE1_BLOCKED` says "this note is not
+approvable" — the doctor's judgement is implicated, and there is nothing to
+retry. An outage says "the check could not run", and retrying is the correct
+response. They previously shared a 422, so a provider rate-limit surfaced to a
+doctor as a rejection of their own writing, with no signal that waiting would
+help. It also made the test suite flap: `approve` re-runs the judge rather than
+trusting the preview (correctly — content may have changed), so a rate-limit on
+that second call failed a test that had nothing wrong with it.
+
+**The clinical gate is unchanged.** Gate 1 still fails closed: nothing
+AI-derived reaches clinical memory unjudged. Only the *label* on the failure
+changed, plus the client copy. Distinguishing an outage is not the same as
+letting one through.
+
+**Cost:** one more error code, and the provider outage is still a failure a
+doctor cannot act on beyond waiting. The honest fix for that is a local judge,
+which is out of scope here.
+
+---
+
+## FD-19 — A brief carries what wrote it, on every path
+
+**Decision:** the brief payload includes `generation_source`
+(`llm` | `fallback_template` | `seed`) on the generate route *and* both read
+routes. The client derives `DoctorBrief.servedByTemplate` from it, so the
+header reads "From records" instead of "AI-generated" whenever no model was
+involved. `meta.source == "fallback"` remains as a fallback for an older server
+that omits the field, and it can only ever turn the flag **on**, never off.
+
+**Why:** the backend already persisted `briefs.generation_source` but never
+exposed it, so a brief read back later was indistinguishable from a
+model-written one and the UI claimed a model had written a summary the
+deterministic template assembled. §6.6 treats unverified provenance labelling as
+a safety issue, not a polish item — and the demo environment always takes the
+template path, so this was the *default* presentation, not an edge case.
+
+**Cost:** one optional field, defaulted, so briefs stored before it existed still
+validate. No migration needed.
 
 ---
 
@@ -231,5 +299,5 @@ failure.
 | Boarding-pass `CGK` / `26°` codes | `BD` doses, HbA1c values | §6.4 text replacement table. |
 | QR code | Document-glyph evidence tile | §6.3: "do not render a fake QR". |
 | Robot mascot | Serif `C` monogram in a soft circle | §6.5: use a ClinSync logo mark if one exists in the repo, otherwise a plain mark. No logo asset exists; inventing a mascot is explicitly forbidden. |
-| Bottom nav `Home / Itinerary / Bookings / Profile` | `Home / Patients / Records / Memory` | §6.4. `Profile` is dropped because there is no profile (FD-12). |
+| Bottom nav `Home / Itinerary / Bookings / Profile` | `Home / Patients / Records / Memory` | §6.4. `Profile` is dropped because there is no profile (FD-13). |
 | Page dots under the carousel | Page dots kept (green active) | §6.1 el. 9 — the carousel is the patient list, which is genuinely pageable. |

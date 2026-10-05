@@ -204,32 +204,147 @@ class LLMGateway:
         language_hint: Optional[str] = None,
         request_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Transcribe audio via Groq Whisper or Gemini Audio."""
-        start_time = time.time()
-        # 1. Try Groq Whisper primary for audio
-        if settings.GROQ_API_KEY:
-            try:
-                files = {"file": (filename, audio_bytes, "audio/wav")}
-                data = {"model": "whisper-large-v3"}
-                if language_hint:
-                    data["language"] = language_hint
-                with httpx.Client(timeout=60.0) as client:
-                    r = client.post(
-                        "https://api.groq.com/openai/v1/audio/transcriptions",
-                        headers={"Authorization": f"Bearer {settings.GROQ_API_KEY}"},
-                        files=files,
-                        data=data,
-                    )
-                    if r.status_code == 200:
-                        text = r.json().get("text", "")
-                        latency_ms = (time.time() - start_time) * 1000
-                        self._log_call("voice_stt", "stt", "groq/whisper-large-v3", latency_ms, True, request_id=request_id)
-                        return {"text": text, "model": "groq/whisper-large-v3", "confidence": 0.95}
-            except Exception as e:
-                logger.warn("Groq Whisper STT failed, trying fallback", error=str(e))
+        """Transcribe audio, walking the configured STT chain.
 
-        # Fallback
-        raise LLMUnavailableError("All speech-to-text providers failed")
+        Previously this tried exactly one provider (Groq Whisper) and raised
+        otherwise, so `STT_PRIMARY` / `STT_FALLBACK_*` were declared and never
+        read (docs/frontend/API_MISMATCHES.md O-07). It now:
+
+        * iterates the configured models, de-duplicated so a repeated setting
+          does not retry the same endpoint twice;
+        * treats an empty transcript as a failed attempt, since an empty string
+          is worse than the caller's fallback placeholder — it would reach the
+          extraction step as if the patient had said nothing;
+        * records a failed `llm_call_log` row per attempt for observability,
+          matching the LLM and vision chains.
+        """
+        start_time = time.time()
+        configured = [
+            getattr(settings, name, "")
+            for name in ("STT_PRIMARY", "STT_FALLBACK_1", "STT_FALLBACK_2")
+        ]
+
+        # Keep order, drop blanks and repeats.
+        models: List[str] = []
+        for raw in configured:
+            name = (raw or "").strip()
+            if name and name not in models:
+                models.append(name)
+
+        if not models:
+            raise LLMUnavailableError("No speech-to-text model is configured")
+
+        last_error = "no provider attempted"
+        for depth, model in enumerate(models):
+            try:
+                text, provider = self._transcribe_with(
+                    model, audio_bytes, filename, language_hint
+                )
+                if not text.strip():
+                    last_error = f"{provider} returned an empty transcript"
+                    logger.warn(
+                        "stt_empty_transcript_trying_next",
+                        model=model,
+                        fallback_depth=depth,
+                    )
+                    self._log_call(
+                        "voice_stt", "stt", provider,
+                        (time.time() - start_time) * 1000, False,
+                        request_id=request_id, error_code="EMPTY_TRANSCRIPT",
+                    )
+                    continue
+                latency_ms = (time.time() - start_time) * 1000
+                self._log_call(
+                    "voice_stt", "stt", provider, latency_ms, True,
+                    request_id=request_id, fallback_depth=depth,
+                )
+                return {
+                    "text": text,
+                    "model": provider,
+                    "confidence": 0.95 if depth == 0 else 0.85,
+                    "fallback_depth": depth,
+                }
+            except LLMUnavailableError:
+                raise
+            except Exception as e:
+                last_error = str(e)
+                logger.warn(
+                    "stt_provider_failed_trying_next",
+                    model=model,
+                    fallback_depth=depth,
+                    error=str(e),
+                )
+                self._log_call(
+                    "voice_stt", "stt", model,
+                    (time.time() - start_time) * 1000, False,
+                    request_id=request_id, error_code=str(e)[:60],
+                    fallback_depth=depth,
+                )
+
+        raise LLMUnavailableError(
+            f"All speech-to-text providers failed ({last_error})"
+        )
+
+    @staticmethod
+    def _transcribe_with(
+        model: str,
+        audio_bytes: bytes,
+        filename: str,
+        language_hint: Optional[str],
+    ) -> tuple[str, str]:
+        """Run one STT model. Returns `(text, provider_label)`."""
+        # Groq's OpenAI-compatible transcription endpoint.
+        if model.startswith("groq/") or "whisper" in model:
+            if not settings.GROQ_API_KEY:
+                raise LLMUnavailableError("GROQ_API_KEY is not configured")
+            files = {"file": (filename, audio_bytes, "audio/wav")}
+            data = {"model": model.split("/", 1)[-1]}
+            if language_hint:
+                data["language"] = language_hint
+            with httpx.Client(timeout=60.0) as client:
+                r = client.post(
+                    "https://api.groq.com/openai/v1/audio/transcriptions",
+                    headers={"Authorization": f"Bearer {settings.GROQ_API_KEY}"},
+                    files=files,
+                    data=data,
+                )
+            if r.status_code != 200:
+                raise RuntimeError(f"HTTP {r.status_code}: {r.text[:200]}")
+            return str(r.json().get("text", "")), f"groq/{data['model']}"
+
+        # Gemini audio understanding via the same LiteLLM router the text slots use.
+        if not settings.GEMINI_API_KEY:
+            raise LLMUnavailableError("GEMINI_API_KEY is not configured")
+        import base64
+
+        response = litellm.completion(
+            model=model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": (
+                                "Transcribe this clinical voice note verbatim. "
+                                "Return only the spoken words — no commentary, "
+                                "no speaker labels."
+                            ),
+                        },
+                        {
+                            "type": "audio_url",
+                            "audio_url": {
+                                "url": "data:audio/wav;base64,"
+                                + base64.b64encode(audio_bytes).decode()
+                            },
+                        },
+                    ],
+                }
+            ],
+            temperature=0.0,
+            timeout=settings.LLM_TIMEOUT_S,
+        )
+        return str(response.choices[0].message.content or ""), model
 
     def judge(
         self,

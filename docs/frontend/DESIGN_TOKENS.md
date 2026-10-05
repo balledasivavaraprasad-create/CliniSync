@@ -193,9 +193,15 @@ rather than *dropped*.
 `MediaQuery.disableAnimations` is true (iOS Reduce Motion / Android remove
 animations), and `AmbientVideo`/`AmbientLayer` do the same.
 
+Build with `--dart-define=CLINSYNC_MOTION_SCALE=1000` to multiply every
+duration in that file by 10 — QA only, for screenshotting mid-animation with
+`tools/capture_hero_frames.py`. Production builds never set it, so the default is
+100 (no scaling).
+
 | Primitive | Spec |
 |---|---|
-| `SectionReveal` | opacity 0→1 + `translateY(12→0)`, 280 ms, `Curves.easeOutCubic`, 40 ms stagger by `index`, plays once per screen build |
+| `SectionReveal` | opacity 0→1 + `translateY(12→0)`, 280 ms, `Curves.easeOutCubic`, 40 ms stagger by `index`, plays once per screen build. Takes an optional `delay` to hold a section back until a headline animation has landed |
+| `LineReveal` | The landing page's hero-title wipe (`style.css:290-295`): each line is clipped by its own box and slides up from `translateY(115%)`, 1100 ms `Curves.easeOutExpo` (= the landing page's `--ease-out cubic-bezier(.16,1,.3,1)`), 90 ms stagger per line, plays once on mount. Used for the Home hero headline |
 | `StaggeredColumn` | the same, applied to a list |
 | `PressScale` | `scale 1 ↔ 0.98`, 120 ms, `Curves.easeOut` — the mobile translation of the landing page's hover lift |
 | `SoftPulse` | `scale 1.00 ↔ 1.08`, 900 ms, `Curves.easeInOut`, reverse-repeat — the active processing node |

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 import json
 import hashlib
+import re
 import structlog
 
 from app.models.patient import Patient
@@ -23,6 +24,56 @@ from app.validation.gate2_output import gate2_validator
 from app.services.lab_service import lab_service
 
 logger = structlog.get_logger(__name__)
+
+
+def _normalise_dose(text: str) -> str:
+    """`"500.0 mg"` -> `"500mg"`, so two spellings of one dose compare equal."""
+    return re.sub(r"[^0-9a-z]+", "", (text or "").lower())
+
+
+def _with_generation_source(brief: DoctorBrief, row: Brief) -> DoctorBrief:
+    """Attach how a stored brief was written, from its DB row.
+
+    `content_json` holds only the brief itself, so a brief read back later would
+    otherwise be indistinguishable from one the model wrote — and the app would
+    label a deterministically assembled template as "AI-generated".
+    """
+    if brief.generation_source is not None:
+        return brief
+    return brief.model_copy(update={"generation_source": row.generation_source})
+
+
+def _conflict_sources(detail_json: Optional[str]) -> List[str]:
+    """Readable line per side of a medication conflict.
+
+    `contradictions.detail_json` stores `{"source_1": {doc, dose, freq},
+    "source_2": {...}}`. Returning both as neutral strings lets the client show
+    them side by side without implying which one applies (§6.6 rule 3). Any
+    shape change degrades to an empty list rather than raising.
+    """
+    if not detail_json:
+        return []
+    try:
+        detail = json.loads(detail_json)
+    except (TypeError, ValueError):
+        return []
+    if not isinstance(detail, dict):
+        return []
+
+    lines: List[str] = []
+    for key in ("source_1", "source_2", "source_a", "source_b"):
+        src = detail.get(key)
+        if not isinstance(src, dict):
+            continue
+        parts = [
+            str(src[field])
+            for field in ("dose", "freq", "doc")
+            if src.get(field) not in (None, "")
+        ]
+        if parts:
+            lines.append(" · ".join(parts))
+    return lines
+
 
 class BriefService:
     def __init__(self) -> None:
@@ -81,10 +132,25 @@ class BriefService:
         # 3. Medications
         cur_meds = []
         for m in meds:
+            # `strength_value` is a float, so `f"{500.0}mg"` produced "500.0mg" —
+            # a spurious decimal on a drug dose. `%g` drops a trailing ".0"
+            # (500.0 -> "500", 1.0 -> "1") and keeps real fractions (0.5).
+            # Separately, `dose_text` already carries the strength ("500 mg"), so
+            # filling both fields made every medication read "500 mg · 500.0mg";
+            # `strength` is now kept only when it adds something.
+            strength = (
+                f"{m.strength_value:g}{m.strength_unit or ''}"
+                if m.strength_value is not None
+                else ""
+            ).strip()
+            dose_text = (m.dose_text or "").strip()
+            redundant = bool(_normalise_dose(strength)) and (
+                _normalise_dose(strength) == _normalise_dose(dose_text)
+            )
             cur_meds.append(BriefMedicationItem(
                 name=m.canonical_name.title(),
-                strength=f"{m.strength_value or ''}{m.strength_unit or ''}".strip(),
-                dose=m.dose_text or "",
+                strength="" if redundant else strength,
+                dose=dose_text,
                 frequency=m.frequency_text or m.frequency_code or "",
                 status=m.status,
                 evidence_ids=[m.fact_id] if m.fact_id else [],
@@ -145,14 +211,21 @@ class BriefService:
 
         # 6. Attention items & Contradictions
         attention = []
-        contradictions = []
+        conflicts = []
         missing_info = []
         for iss in issues:
             if iss.issue_type == "medication_conflict":
-                contradictions.append(BriefContradictionItem(
+                # §6.6 rule 3: a medication conflict must show both recorded
+                # instructions side by side, so populate `sources` from the
+                # issue's structured `detail_json`. It was always `[]`, which
+                # left the client rendering a sentence with nothing to compare
+                # (docs/frontend/API_MISMATCHES.md M-02). The LLM path still may
+                # return an empty list; the client falls back to the structured
+                # conflict in both cases.
+                conflicts.append(BriefContradictionItem(
                     issue_id=iss.id,
                     text=iss.description,
-                    sources=[]
+                    sources=_conflict_sources(iss.detail_json)
                 ))
             elif iss.issue_type == "missing_information":
                 missing_info.append(BriefMissingInfoItem(
@@ -188,7 +261,7 @@ class BriefService:
             recent_investigations=rec_invs,
             important_trends=trends,
             attention_items=attention,
-            contradictions=contradictions,
+            contradictions=conflicts,
             missing_information=missing_info,
             evidence_shortcuts=shortcuts,
             disclaimer="Deterministic clinical summary of verified source records. Not a diagnosis or treatment recommendation. Verify against sources."
@@ -228,7 +301,12 @@ class BriefService:
             if cached_brief:
                 logger.info("returning_cached_doctor_brief", brief_id=cached_brief.id)
                 data = json.loads(cached_brief.content_json)
-                return DoctorBrief.model_validate(data)
+                # Return the persisted generation source so the route can set
+                # `meta.source` truthfully for a cached brief too.
+                return (
+                    DoctorBrief.model_validate(data),
+                    cached_brief.generation_source or "llm",
+                )
 
         # 2. Build Context for LLM
         context_payload = {
@@ -315,6 +393,11 @@ class BriefService:
             val_status = "fallback_template"
 
         # 5. Persist to DB
+        # Recorded in the payload itself as well as the column, so a brief read
+        # back later is still labelled with what wrote it.
+        final_brief = final_brief.model_copy(
+            update={"generation_source": gen_source}
+        )
         brief_row = Brief(
             id=brief_id(),
             patient_id=patient_id,
@@ -329,20 +412,23 @@ class BriefService:
         db.add(brief_row)
         db.commit()
 
-        return final_brief
+        # Return the generation source alongside the brief so the route can set
+        # `meta.source` honestly (`llm` vs `fallback`) instead of hardcoding
+        # "llm" for a template brief.
+        return final_brief, gen_source
 
     @staticmethod
     def get_latest_brief(db: Session, patient_id: str) -> Optional[DoctorBrief]:
         b = db.query(Brief).filter(Brief.patient_id == patient_id).order_by(desc(Brief.created_at)).first()
         if not b:
             return None
-        return DoctorBrief.model_validate(json.loads(b.content_json))
+        return _with_generation_source(DoctorBrief.model_validate(json.loads(b.content_json)), b)
 
     @staticmethod
     def get_brief_by_id(db: Session, bid: str) -> Optional[DoctorBrief]:
         b = db.query(Brief).filter(Brief.id == bid).first()
         if not b:
             return None
-        return DoctorBrief.model_validate(json.loads(b.content_json))
+        return _with_generation_source(DoctorBrief.model_validate(json.loads(b.content_json)), b)
 
 brief_service = BriefService()

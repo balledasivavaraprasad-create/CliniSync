@@ -15,7 +15,7 @@ statement is an inference rather than a reading, it is marked *(inferred)*.
 | Flutter | **3.47.6** stable · Dart **3.13.5** · `macos_arm64` |
 | `pubspec.yaml` `name` | `clinicsync` |
 | SDK constraint | `>=3.0.0 <4.0.0` |
-| Platforms present | `android/`, `macos/`, `web/` — **`ios/` ABSENT** (added during this work, see `DECISIONS.md` FD-13) |
+| Platforms present | `android/`, `macos/`, `web/` — **`ios/` ABSENT** (added during this work, see `DECISIONS.md` FD-14) |
 | Publish | `publish_to: "none"` |
 
 Dependencies as shipped before the rebuild:
@@ -211,11 +211,11 @@ are `{"success": false, "error": {"code", "message", "details"}, "meta": {…}}`
 | Item | Value |
 |---|---|
 | URL | `sqlite:///./clinsync.db` (relative to CWD) → repo-root `clinsync.db` (+ `-wal`, `-shm`) |
-| Engine | `create_engine(..., connect_args={"check_same_thread": False})` for SQLite, `echo` only at DEBUG |
-| Pragmas | `PRAGMA foreign_keys=ON`, `PRAGMA journal_mode=WAL` on every connect |
+| Engine | `create_engine(..., connect_args={"check_same_thread": False}, pool_pre_ping=True)` for SQLite, `echo` only at DEBUG. `pool_pre_ping` and a 30 s busy `timeout` were added in the backend-alignment pass: a writer racing a reader used to raise `database is locked` immediately instead of waiting. |
+| Pragmas | `PRAGMA foreign_keys=ON`, `PRAGMA journal_mode=WAL`, `PRAGMA synchronous=NORMAL` on every connect |
 | Session | `SessionLocal = sessionmaker(autocommit=False, autoflush=False)`; `get_db()` generator and `get_db_context()` contextmanager |
-| Migrations | **ABSENT** — no Alembic, no `migrations/`, no `alembic.ini` |
-| Schema creation | **ABSENT from the codebase** — there is no `Base.metadata.create_all(...)` anywhere in project code, so the tables in the committed `clinsync.db` were created out-of-band. A fresh clone therefore cannot serve a single endpoint until the schema is created. Recorded as an observation in `API_MISMATCHES.md` (O-01); not fixed here because §4 forbids changing backend behaviour as part of the frontend rebuild. |
+| Migrations | **ABSENT** — no Alembic, no `migrations/`, no `alembic.ini` (see also: schema is now created on boot) |
+| Schema creation | **Was ABSENT** — no `Base.metadata.create_all(...)` anywhere, so the tables in the committed `clinsync.db` were created out-of-band and a fresh clone could not serve a single endpoint (O-01). Since the backend-alignment pass, `db.database.ensure_schema()` runs on boot: additive `CREATE TABLE IF NOT EXISTS` for anything missing, never altering or dropping. |
 
 ## 13. Storage
 
@@ -233,11 +233,11 @@ are `{"success": false, "error": {"code", "message", "details"}, "meta": {…}}`
 | Module | Public API | Real or stub |
 |---|---|---|
 | `services/medication_service.py` | `reconcile(db, patient_id)` → contradictions; the source of the metformin conflict | real |
-| `services/contradiction_service.py` | `recompute(db, patient_id)` → `Contradiction` rows | real — but its future-date detector queries `Document.id == patient_id` (`contradiction_service.py:118`), a bug that makes that rule never fire (O-02) |
+| `services/contradiction_service.py` | `recompute(db, patient_id)` → `Contradiction` rows; `patch_issue(...)` | real. The future-date detector queried `Document.id == patient_id`, so it matched nothing and the rule never fired (O-02) — now `Document.patient_id`. Fixing it exposed a latent `TypeError` comparing naive SQLite datetimes with `datetime.now(timezone.utc)`, so stored values are normalised to UTC. `patch_issue` raised a bare `ValueError` → 500 for an unknown id; it now raises `IssueNotFoundError` → 404 (M-06). |
 | `services/missing_info_service.py` | `recompute(db, patient_id)` → missing-information rows | real |
 | `services/timeline_service.py` | builds `TimelineEvent`s (diagnosis, medication_start, dose_change, investigation) with `sort_key` | real |
 | `services/trend_service.py` | groups investigations by `group_key`, computes direction + deltas | real |
-| `services/brief_service.py` | `generate_brief(...)` (real LLM path) and `_build_deterministic_template_brief(...)` fallback; caches on `input_fingerprint` | real |
+| `services/brief_service.py` | `generate_brief(...)` (real LLM path) and `_build_deterministic_template_brief(...)` fallback; caches on `input_fingerprint` | real. Now returns `(brief, generation_source)` so the route can report `meta.source` honestly, and populates `contradictions[].sources` from `detail_json` (M-02). Medication doses are formatted with `%g` — `strength_value` is a float, so `f"{500.0}mg"` rendered as `500.0mg`. |
 | `services/clinical_memory_service.py` | builds verified memory rows from an approved consultation | real |
 | `validation/gate1_validator.py`, `gate2_validator.py` | Gate 1 fact validation, Gate 2 brief validation (claim extraction → evidence match → consistency → unsupported-claim detection) | real |
 | `services/normalization_service.py` | `normalize_medication`, `normalize_investigation`, `normalize_date` (day-first parsing) | real |
@@ -254,7 +254,7 @@ are `{"success": false, "error": {"code", "message", "details"}, "meta": {…}}`
 | `services/confidence_service.py` | `calculate_confidence(model_confidence, provenance_verified, ocr_confidence, unknown_mapping)` | real banding (≥0.85 high / ≥0.60 medium / else needs_verification); the pipeline never passes `ocr_confidence` or `unknown_mapping` |
 | `services/pipeline_orchestrator.py` | `run(document_id, is_reprocess)` → job id | real state machine (`extracting_text → classifying → extracting_entities → normalize/persist → complete`), FastAPI `BackgroundTasks` — **no Celery/worker**, `ai/fallbacks/` is an empty package |
 | `services/voice_service.py` | `process_voice(...)`, `review_voice(...)` | real; STT failure → placeholder transcript, `stt_model="fallback"`, confidence 0.50, facts created at 0.55 `needs_verification`; review promotes to 0.80 `medium` |
-| `ai/gateway.py` | `LLMGateway` singleton: `complete_text`, `complete_json`, `vision_extract`, `transcribe`, `judge` | LiteLLM Router over 3 logical slots (`llm_generate` 4-deep, `llm_extract` 2-deep, `llm_judge` 2-deep); vision 2 models manual; **STT is single-provider (Groq Whisper) with no fallback** — `STT_PRIMARY`/`STT_FALLBACK_*` are declared but never read |
+| `ai/gateway.py` | `LLMGateway` singleton: `complete_text`, `complete_json`, `vision_extract`, `transcribe`, `judge` | LiteLLM Router over 3 logical slots (`llm_generate` 4-deep, `llm_extract` 2-deep, `llm_judge` 2-deep); vision 2 models manual. **STT was single-provider with no fallback** — `STT_PRIMARY`/`STT_FALLBACK_*` were declared and never read, and the shipped default primary was the text-only `gemini/gemini-2.5-flash`. Now walks the configured chain (Groq + Gemini audio paths), rejects empty transcripts, logs each failed attempt. |
 | `ai/prompts/*.md` | prompt files per task | real |
 | `schemas/ai_contracts.py` | `DocClassification`, `ExtractionResult` (+ 7 list fields), `EvidenceReference` | real Pydantic v2 contracts with alias normalisers |
 
@@ -262,8 +262,8 @@ are `{"success": false, "error": {"code", "message", "details"}, "meta": {…}}`
 
 | Item | Value |
 |---|---|
-| Seed | `backend/app/db/seed.py`, `seed_demo_data(reset=True)`; CLI `python -m app.db.seed --reset` (**the CLI has a bug: `reset=args.reset or True`, so `--reset` is always on** — O-03) |
-| Fixtures dir | `Path("tests/fixtures")` — **CWD-relative**, so seeding only works from the repo root |
+| Seed | `backend/app/db/seed.py`, `seed_demo_data(reset=True)`; CLI `python -m app.db.seed --reset`. **Was `reset=args.reset or True`, so the flag could never be false** (O-03); now it seeds with a reset and logs `seed_reset_is_destructive` rather than implying `--reset` is optional. The purge was also rewritten to ordered bulk deletes, which removed an `SAWarning` from racing the FK cascade. |
+| Fixtures dir | Was `Path("tests/fixtures")` — **CWD-relative**, so seeding only worked from the repo root. Now resolved repo-root-relative. |
 | Patient | `pat_demo_patient_001` / "Demo Patient" / DOB 1974-05-14 / 52 / male / `is_demo=True` / last activity 2026-09-28. Aliases `demo-patient-001`, `demo_patient_001` resolve to it |
 | Documents | 6 generated PDFs: `doc_demo_001_consult_jan`, `002_rx_feb`, `003_lab_apr`, `004_consult_jun`, `005_rx_sep`, `006_discharge_sep` — all `complete`, `page_count=1` |
 | Facts | 1 diagnosis, 3 symptoms, 1 observation, 7 investigations (HbA1c 8.4 → 8.0 → 7.8 all flagged high; fasting glucose 168/142 high; creatinine 0.9 ×2) |
@@ -280,16 +280,22 @@ are `{"success": false, "error": {"code", "message", "details"}, "meta": {…}}`
 |---|---|
 | LLM generate / judge | raises `LLMUnavailableError` → **503 `LLM_UNAVAILABLE`** with a human message |
 | Vision | both models tried, then 503 |
-| STT | one provider only, then 503 |
-| Brief | **real fallback**: after `GATE2_MAX_REGEN_ATTEMPTS`, `_build_deterministic_template_brief(...)`, persisted with `generation_source="fallback_template"`, `status="fallback_template"` |
-| Classification | keyword heuristic, confidence 0.60 (0.40 with no hit) |
-| Extraction | 3 hard-coded regexes at 0.75 |
+| STT | **now a chain**: `STT_PRIMARY → STT_FALLBACK_1 → STT_FALLBACK_2` (de-duplicated), each attempt logged, then 503 `STT_FAILED` |
+| Brief | **real fallback**: after `GATE2_MAX_REGEN_ATTEMPTS`, `_build_deterministic_template_brief(...)`, persisted with `generation_source="fallback_template"`, `status="fallback_template"`. Reported as `meta.source = "fallback"` and a `generation_source` field on every path. |
+| Classification | keyword heuristic, confidence 0.60 (0.40 with no hit). Now also falls back when the LLM returns a null/unknown type, not only when it raises. |
+| Extraction | 3 hard-coded regexes at 0.75. Also falls back when the LLM returns an *empty* `ExtractionResult` — that case previously produced zero facts silently. |
 | OCR | placeholder text, `ocr_confidence` 0.40/0.30, `method="fallback"` |
 | Voice | placeholder transcript, `stt_model="fallback"`, 0.50, request still 201 |
 
-**`meta.source == "fallback"` is never emitted.** `schemas/common.py:10` comments
-the value in, but no code path assigns it — see `API_MISMATCHES.md` M-01, which
-is why the app derives its `Demo data` tag from fixture provenance instead.
+**`meta.source == "fallback"` is now emitted for briefs only.** OCR and voice
+still record their fallback in a column the API does not expose — see
+`API_MISMATCHES.md` M-01, which is also why the app derives its `Demo data` tag
+from fixture provenance rather than the envelope.
+
+**A validation outage is no longer a validation failure.** Gate 1 still fails
+closed when the judge cannot run, but the route now answers **503
+`VALIDATION_UNAVAILABLE`** rather than **422 `GATE1_BLOCKED`** so an outage is
+distinguishable from a rejected note — DECISIONS.md FD-18.
 
 ## 18. Landing page
 
@@ -355,8 +361,8 @@ scrollytelling, a 38 s marquee, a lerped custom cursor ring and spotlight, and
 |---|---|
 | 1 | `backend/app/ai/fallbacks/` exists but is an **empty package** (0 lines). |
 | 2 | `validation/policies.yaml` and `validation/validators/prompt_injection_check.py` are declared but never read. |
-| 3 | `settings` declares `STT_PRIMARY`, `STT_FALLBACK_1`, `STT_FALLBACK_2`, `DEMO_FALLBACKS_ENABLED`, `GATE1_MIN_FACT_CONFIDENCE` — all unread. |
+| 3 | `settings` declared `STT_PRIMARY`, `STT_FALLBACK_1`, `STT_FALLBACK_2` — all unread, and the default primary was a text-only model. Since fixed: the STT chain is walked in order. `DEMO_FALLBACKS_ENABLED` and `GATE1_MIN_FACT_CONFIDENCE` remain unread. |
 | 4 | `clinical_facts.source_span_end` is never populated (only `source_span_start`). |
 | 5 | `GET /patients/{id}/brief/latest` injects a hard-coded `readiness_score = 92` (`briefs.py:50`) — not a model output. The app renders it as a progress ring without implying it is derived. |
-| 6 | Backend tests live in `tests/` at the repo root (23 tests in 8 files), have no `conftest.py`, and assume the schema already exists. `.pytest_cache/v/cache/lastfailed` still lists `test_document_pipeline_e2e` as failing — the one test that needs a live vision call. |
+| 6 | Backend tests live in `tests/` at the repo root (now 57 tests in 9 files), have no `conftest.py`, and assume the schema already exists. `test_document_pipeline_e2e` — the one test needing a live vision call — was failing and is now green. |
 | 7 | `docs/PROGRESS.md`, `docs/DECISIONS.md`, `docs/OPEN_QUESTIONS.md` at the repo root are **backend** documents from the previous phase. This frontend work adds `docs/frontend/`. |

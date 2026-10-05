@@ -70,14 +70,46 @@ async def test_consultation_lifecycle_and_gate1_approval():
     assert res_preview.status_code == 200
     preview_data = res_preview.json()["data"]
     print("\nPREVIEW CHECKS:", preview_data["checks"])
+
+    # Gate 1 fails **closed** by design when the faithfulness judge cannot run
+    # (§12.1): nothing AI-derived may reach clinical memory unjudged. That is
+    # correct behaviour, but it makes this assertion depend on a live
+    # third-party model, so a provider rate-limit shows up as a failure even
+    # though the code is fine. Skip with a reason rather than reporting a false
+    # regression — a genuine judge *block* still fails, because that is not
+    # `judge_unavailable`.
+    if preview_data["can_approve"] is not True:
+        unavailable = any(
+            "judge service is unavailable" in str(c.get("detail", ""))
+            for c in preview_data["checks"]
+            if not c.get("passed")
+        )
+        if unavailable:
+            pytest.skip(
+                "Gate 1 failed closed: the external validation judge is "
+                "unavailable (provider rate-limit / no network). Re-run when a "
+                "judge provider is reachable."
+            )
     assert preview_data["can_approve"] is True
     assert len(preview_data["proposed_memory_items"]) >= 1
 
     # 4. Gate 1 Approval Commit
+    #
+    # `approve` re-runs Gate 1 rather than trusting the preview, which is correct
+    # (the content may have changed) but means a second call to the external
+    # judge. If the judge rate-limits on that second call the API answers 503
+    # `VALIDATION_UNAVAILABLE` — an outage, not a rejection — so skip with a
+    # reason instead of reporting a false regression. A real content block is
+    # 422 `GATE1_BLOCKED` and still fails, as it should.
     res_approve = client.post(
         f"/api/v1/consultations/{cid}/approve",
         json={"acknowledged_unedited": False}
     )
+    if res_approve.status_code == 503:
+        pytest.skip(
+            "Gate 1 failed closed on approve: the external validation judge "
+            "became unavailable (provider rate-limit / no network)."
+        )
     assert res_approve.status_code == 200
     appr_data = res_approve.json()["data"]
     assert appr_data["status"] == "approved"

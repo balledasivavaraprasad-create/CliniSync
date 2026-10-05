@@ -40,9 +40,13 @@ class Settings(BaseSettings):
     LLM_JUDGE_FALLBACK: str = "gemini/gemini-2.5-flash"
     VISION_PRIMARY: str = "gemini/gemini-2.5-flash"
     VISION_FALLBACK: str = "gemini/gemini-2.5-pro"
-    STT_PRIMARY: str = "gemini/gemini-2.5-flash"
-    STT_FALLBACK_1: str = "groq/whisper-large-v3"
-    STT_FALLBACK_2: str = "groq/whisper-large-v3"
+    # Speech-to-text chain. The default primary was `gemini/gemini-2.5-flash`,
+    # a text-only model, so the gateway's single-provider attempt always failed
+    # and STT degraded to the placeholder transcript on every recording. The
+    # chain is walked in order and de-duplicated by `LLMGateway.transcribe`.
+    STT_PRIMARY: str = "groq/whisper-large-v3"
+    STT_FALLBACK_1: str = "gemini/gemini-2.5-flash"
+    STT_FALLBACK_2: str = "groq/whisper-large-v3-turbo"
 
     # ── Gateway behavior
     LLM_TIMEOUT_S: int = 45

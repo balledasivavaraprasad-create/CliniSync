@@ -7,8 +7,9 @@ Verification gate for every task, per §0.2 rule 9:
 
 ```bash
 flutter analyze     # No issues found!
-flutter test        # 112 tests, All tests passed!
+flutter test        # 127 tests, All tests passed!
 flutter build web --release
+PYTHONPATH=backend .venv/bin/python -m pytest tests/ -q   # 61 passed
 .venv/bin/python tools/capture_screens.py   # 21 routes, 0 Dart/JS exceptions
 ```
 
@@ -30,14 +31,14 @@ the sole record of what was deleted.
 
 | Task | Objective | Status | Notes |
 |---|---|---|---|
-| C04 | Tag, branch, delete old UI, scaffold new `lib/` | **Done** | Tag `pre-redesign-frontend`, branch `frontend-redesign`, 53 Dart files removed per the §3 matrix, platform folders preserved, `ios/` generated (FD-13) |
+| C04 | Tag, branch, delete old UI, scaffold new `lib/` | **Done** | Tag `pre-redesign-frontend`, branch `frontend-redesign`, 53 Dart files removed per the §3 matrix, platform folders preserved, `ios/` generated (FD-14) |
 
 ## Phase 2 — Design system (C05–C08)
 
 | Task | Objective | Status | Notes |
 |---|---|---|---|
 | C05 | Dependencies, fonts, assets | **Done** | Cormorant Garamond / Inter / JetBrains Mono as local static TTFs; `lucide_icons_flutter` substituted for the dart2js-breaking `lucide_icons` (FD-01) |
-| C06 | Design tokens §7.1–7.5 | **Done** | `app_colors/typography/spacing/radii/shadows`; three token values differ from the §7.1 estimates after sampling `appTheme.jpg` — logged in `DESIGN_TOKENS.md` + FD-08; `/galleries/tokens` renders every token |
+| C06 | Design tokens §7.1–7.5 | **Done** | `app_colors/typography/spacing/radii/shadows`; three token values differ from the §7.1 estimates after sampling `appTheme.jpg` — logged in `DESIGN_TOKENS.md` + FD-09; `/galleries/tokens` renders every token |
 | C07 | `ThemeData` assembly | **Done** | Light only, no splash, fade-through page transitions, full component-theme coverage |
 | C08 | Core primitives §7.6 | **Done** | `CircleIconButton, PrimaryPillButton, SectionHeader, StatusPill, ConfidenceBadge, ProgressRing, ProgressBar, SurfaceCard, AddRow, AvatarStack, PageDots` |
 
@@ -90,22 +91,90 @@ All 20 §9 screens built. Each acceptance criterion met against live data.
 
 | Task | Objective | Status | Notes |
 |---|---|---|---|
-| C37 | Motion & ambient pass | **Done** | Ambient layer on Home/Brief/Approval; hero parallax clamped to ≤ 0.25; all §7.9 primitives in place; reduce-motion honoured **including the video** (the landing page does not do this); video paused when backgrounded and disposed on leave. FD-04/FD-05/FD-06 record the three judgement calls |
+| C37 | Motion & ambient pass | **Done** | Ambient layer on Home/Brief/Approval; hero parallax clamped to ≤ 0.25; all §7.9 primitives in place, including `LineReveal` — the landing page's masked line-by-line hero wipe (1100 ms `easeOutExpo`, 90 ms stagger); reduce-motion honoured **including the video** (the landing page does not do this); video paused when backgrounded and disposed on leave. FD-04/FD-05/FD-06 record the three judgement calls |
 | C38 | E2E walkthrough & visual QA | **Done** | Full 18-step clinical flow walked on live demo data; 21 routes captured with 0 exceptions; §6.1 inventory mapped element-by-element in `QA/README.md` |
 | C39 | Cleanup & documentation | **Done** | This directory; `flutter analyze` clean; every colour/type/spacing value traceable to a token file |
 
 ---
 
+## Backend alignment pass (after C39)
+
+The user asked for the backend to fit the rebuilt dashboard and to work
+reliably. Plan §4 had forbidden backend edits during the frontend rebuild, so
+this was a separate, explicitly requested pass. Every change is **additive or a
+bug fix**, and each is pinned by `tests/test_api_contract.py` (38 new tests).
+
+### Reliability
+
+| Change | Why |
+|---|---|
+| Schema created on boot (`ensure_schema`) | No `create_all` existed anywhere, so a fresh clone had 17 missing tables and every endpoint 500'd. Additive only. **O-01** |
+| `pool_pre_ping` + SQLite busy `timeout: 30` + `synchronous=NORMAL` | A writer racing a reader raised `database is locked` immediately instead of waiting |
+| `get_db_context` rolls back on exception | A failed recompute left a half-applied transaction for the next reader |
+| Unhandled exceptions logged with the request id | Failures inside `call_next` never reached the handlers, so they were invisible |
+| Uncaught handler logs the cause, keeps the response generic | §6.6 rule 7 — real cause in the log, nothing internal to the client |
+| `/health` no longer touches the DB | A liveness probe that queries the DB restarts a healthy server when the DB is briefly locked |
+| `/health/deep` reports `schema_complete`, answers 503 | Readiness must be actionable from the status code |
+| Seed works from any directory | `FIXTURES_DIR` was CWD-relative, so seeding only worked from the repo root |
+| Seed purge rewritten as ordered bulk deletes | Per-row deletes raced the FK cascade and emitted an `SAWarning` every run |
+| `--reset` no longer pretends to be optional | `reset=args.reset or True` could never be false; the CLI now logs its destructiveness |
+| STT walks its configured chain | `STT_PRIMARY`/`STT_FALLBACK_*` were never read and the default primary was a text-only model, so every recording degraded to a placeholder transcript. **O-07 / M-22** |
+| Extraction and classification fall back on an *empty* LLM result | A gateway that exhausted its providers could still return a schema-valid empty object, silently yielding no facts |
+| Date-conflict filter fixed (`Document.patient_id`) | It matched nothing, so the detector never ran. Fixing it exposed a naive-vs-aware datetime `TypeError` the broken filter had been hiding. **O-02** |
+
+### Contract
+
+| Change | Mismatch |
+|---|---|
+| All 18 patient-scoped routes 404 for an unknown patient | **M-17** |
+| `PATCH /issues/{id}` → 404 `ISSUE_NOT_FOUND` instead of 500 | **M-06** |
+| Medication list carries `group_key`, `start_date`, `stop_date` | **M-07** |
+| Brief `contradictions[].sources` populated from `detail_json` | **M-02** |
+| Brief `meta.source` reports `fallback`, and every read path carries `generation_source` | **M-01** |
+| `readiness_score` derived from the brief, not a hardcoded `92` | **M-18** |
+| Specialty `other` labelled `Other` on both sides | **M-09** |
+| Medication doses no longer render as `500 mg · 500.0mg` | display defect found via screenshot |
+| Error bodies never leak internals | **M-21** (verified; still open for structured field errors) |
+| A validation outage is 503 `VALIDATION_UNAVAILABLE`, not 422 `GATE1_BLOCKED` | **M-25** |
+
+### Client follow-through
+
+The brief header now reads **"From records"** rather than "AI-generated" when
+the backend reports the deterministic template served the request — claiming a
+model wrote it when it did not is precisely the unverified claim §6.6 forbids.
+The Approval screen also separates a validation outage from a blocked note: one
+reads "try again in a moment", the other "these items need your review".
+
+### Still open
+
+M-12 (no document thumbnails), M-14 (seeded brief's fake evidence ids), M-16 (no
+voice-history endpoint), M-21 (empty `error.details`), plus O-04…O-06, O-09,
+O-10. Each is cosmetic or additive, has a screen-level workaround, and is
+documented in `API_MISMATCHES.md`.
+
+### Known limitation, deliberately not "fixed"
+
+The **LLM path for brief generation does not currently succeed** — Gemini
+rate-limits, and the Groq model's JSON fails `DoctorBrief` schema validation on
+both attempts, so every brief is served by the deterministic template. That
+path degrades safely and now *says so* in both the envelope and the UI. Making
+the model schema-compliant is prompt work with its own regression risk, so it is
+recorded rather than attempted here.
+
+---
+
 ## Verification record
 
-### Tests — 112 passing
+### Tests — 127 Flutter + 61 backend, all passing
 
 | Suite | Tests | Covers |
 |---|---|---|
-| `test/models_test.dart` | 42 | every model's tolerant parsing, all five date formats, enum wire mapping, conflict-source extraction, specialty catalogue |
-| `test/design_system_test.dart` | 24 | token values, `ThemeData`, icon table size, families |
-| `test/components_test.dart` | 42 | §7.6 primitives and §7.10 composites render, §6.6 copy rules, token discipline, §6.5 imagery rules |
+| `test/models_test.dart` | 45 | tolerant parsing, all five date formats, enum wire mapping, conflict-source extraction, specialty catalogue, brief provenance |
+| `test/design_system_test.dart` | 25 | token values, `ThemeData`, icon table size, families, §11.4 copy including outage vs block |
+| `test/components_test.dart` | 49 | §7.6 primitives and §7.10 composites, §6.6 copy rules, token discipline, §6.5 imagery rules, `LineReveal` timing and reduce-motion |
 | `test/api_client_test.dart` | 8 | envelope unwrapping, error mapping, traceback suppression, GET-retries-once vs POST-never-retried |
+| `tests/test_api_contract.py` (backend) | 38 | 404s for unknown patients and issues, `group_key`, honest `meta.source`, brief provenance on read-back, outage-vs-block signalling, both conflict sources, derived readiness score, non-duplicated doses, liveness vs readiness, schema self-healing and additivity, no internals in error bodies |
+| backend suite (pre-existing) | 23 | seed, demo flow, validation gates, brief, consultations, documents, voice, routes. The Gate 1 approval test **skips with a reason** when the external judge is rate-limited, rather than reporting a false regression |
 
 ### Screenshots
 
@@ -119,6 +188,7 @@ All 20 §9 screens built. Each acceptance criterion met against live data.
 | `tools/probe_api.py` | Calls every endpoint the app uses; writes `API_PROBE.json` + a status table. The evidence behind `API_MISMATCHES.md` |
 | `tools/capture_fixtures.py` | Saves real backend responses into `test/fixtures/` and `assets/demo/` |
 | `tools/capture_screens.py` | Route→screenshot harness; fails on any console exception |
+| `tools/capture_hero_frames.py` | Films the Home hero reveal frame by frame; pair with `--dart-define=CLINSYNC_MOTION_SCALE` |
 | `tools/serve_web.py` | SPA-fallback static server for `build/web` (plain `http.server` 404s deep links) |
 | `tools/extract_ambient_stills.py` | Regenerates the five ambient stills from the landing page's own loops via a sage duotone ramp (FD-05) |
 | `tools/fix_curly.py` | One-off typographic fixer used while building the copy |
@@ -127,7 +197,7 @@ All 20 §9 screens built. Each acceptance criterion met against live data.
 
 | Gap | Tracked as |
 |---|---|
-| No auth in the backend → no login/profile screens | `DECISIONS.md` FD-12, `API_MISMATCHES.md` M-20 |
+| No auth in the backend → no login/profile screens | `DECISIONS.md` FD-13, `API_MISMATCHES.md` M-20 |
 | Ambient video does not play on web (platform view) | FD-04 |
 | No first-page document thumbnails (no bulk page endpoint) | M-12 |
 | No voice-note history list (no GET endpoint) | M-16 |

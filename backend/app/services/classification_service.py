@@ -45,24 +45,34 @@ class ClassificationService:
                 slot="llm_extract"
             )
 
-            # Cross-check heuristic
-            if heuristic and res.document_type != heuristic:
-                logger.info("classification_heuristic_divergence", llm_type=res.document_type, heuristic=heuristic)
-                # If LLM confidence is low, favor heuristic or adjust confidence
-                if res.confidence < 0.8:
-                    res.document_type = heuristic
-                    res.confidence = 0.75
+            # A gateway that exhausted its providers can still hand back a
+            # schema-valid object. If it carries no type, or an `unknown` one,
+            # the heuristic is strictly better than that — treat it as a
+            # failure so the fallback below applies.
+            if res is not None and res.document_type not in (
+                None,
+                DocumentType.unknown,
+            ):
+                # Cross-check heuristic
+                if heuristic and res.document_type != heuristic:
+                    logger.info("classification_heuristic_divergence", llm_type=res.document_type, heuristic=heuristic)
+                    # If LLM confidence is low, favor heuristic or adjust confidence
+                    if res.confidence < 0.8:
+                        res.document_type = heuristic
+                        res.confidence = 0.75
 
-            return res
+                return res
+            logger.warning("classification_returned_unusable_fallback_to_heuristic")
         except Exception as e:
             logger.warning("classification_llm_failed_fallback_to_heuristic", error=str(e))
-            doc_type = heuristic or DocumentType.other
-            return DocClassification(
-                document_type=doc_type,
-                document_date=None,
-                date_confidence=0.0,
-                confidence=0.60 if heuristic else 0.40,
-                language="en"
-            )
+
+        doc_type = heuristic or DocumentType.other
+        return DocClassification(
+            document_type=doc_type,
+            document_date=None,
+            date_confidence=0.0,
+            confidence=0.60 if heuristic else 0.40,
+            language="en"
+        )
 
 classification_service = ClassificationService()

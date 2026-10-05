@@ -14,8 +14,8 @@ def get_verified_memory(
     db: Session = Depends(get_db_session),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import resolve_patient_id
-    pid = resolve_patient_id(patient_id)
+    from app.api.deps import require_patient_id
+    pid = require_patient_id(db, patient_id)
     memories = memory_service.get_patient_memory(db=db, patient_id=pid, verified_only=True)
     return {
         "success": True,
@@ -31,8 +31,8 @@ def get_memory_history(
     db: Session = Depends(get_db_session),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import resolve_patient_id
-    pid = resolve_patient_id(patient_id)
+    from app.api.deps import require_patient_id
+    pid = require_patient_id(db, patient_id)
     memories = memory_service.get_memory_history(db=db, patient_id=pid)
     return {
         "success": True,
@@ -47,8 +47,8 @@ def get_memory_review_queue(
     db: Session = Depends(get_db_session),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import resolve_patient_id
-    pid = resolve_patient_id(patient_id)
+    from app.api.deps import require_patient_id
+    pid = require_patient_id(db, patient_id)
     memories = memory_service.get_patient_memory(db=db, patient_id=pid, verified_only=False)
     # Filter for unverified or pending review
     queue = [m for m in memories if not m.get("verified")]
@@ -66,11 +66,11 @@ def propose_memory(
     db: Session = Depends(get_db_session),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import resolve_patient_id
+    from app.api.deps import require_patient_id
     from app.models.clinical_memory import ClinicalMemory
     from app.utils.ids import clinical_memory_id
     import json
-    pid = resolve_patient_id(patient_id)
+    pid = require_patient_id(db, patient_id)
 
     mem = ClinicalMemory(
         id=clinical_memory_id(),

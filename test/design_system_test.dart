@@ -163,6 +163,15 @@ void main() {
       expect(ErrorMessages.forCode('TIMEOUT'), ErrorMessages.timeout);
     });
 
+    test('a validation outage reads as "try again", not "your note is wrong"', () {
+      // A blocked note and an unreachable judge used to share one code, so the
+      // doctor read a provider outage as a rejection of their own writing.
+      final String outage = ErrorMessages.forCode('VALIDATION_UNAVAILABLE');
+      expect(outage, isNot(ErrorMessages.forCode('GATE1_BLOCKED')));
+      expect(outage.toLowerCase(), contains('try again'));
+      expect(outage.toLowerCase(), contains('nothing is wrong'));
+    });
+
     test('unknown codes never leak a raw message', () {
       expect(ErrorMessages.forCode('SOMETHING_ELSE'), 'Something went wrong.');
       expect(ErrorMessages.forCode(null), 'Something went wrong.');

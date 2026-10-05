@@ -80,15 +80,20 @@ async def test_brief_generation_and_caching():
     # 2. Test Brief Generation via Service
     with get_db_context() as db:
         start_t = time.time()
-        brief = await brief_service.generate_brief(db=db, patient_id=pid, specialty="general_medicine")
+        brief, gen_source = await brief_service.generate_brief(
+            db=db, patient_id=pid, specialty="general_medicine"
+        )
         gen_duration = time.time() - start_t
         assert brief is not None
         assert isinstance(brief, DoctorBrief)
+        assert gen_source in ("llm", "fallback_template")
         assert len(brief.current_medications) >= 1
 
         # 3. Test Cached Retrieval (< 200 ms target)
         cache_start = time.time()
-        cached = await brief_service.generate_brief(db=db, patient_id=pid, specialty="general_medicine")
+        cached, cached_source = await brief_service.generate_brief(
+            db=db, patient_id=pid, specialty="general_medicine"
+        )
         cache_duration = time.time() - cache_start
         assert cache_duration < 0.20, f"Cache retrieval took {cache_duration}s, expected < 0.20s"
         assert cached.patient.id == pid

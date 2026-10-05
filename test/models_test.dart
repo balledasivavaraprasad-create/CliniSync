@@ -410,6 +410,82 @@ void main() {
       });
       expect(b.disclaimerText, contains('Not a diagnosis'));
     });
+
+    test('a blocked preview separates infrastructure from content', () {
+      ApprovalPreview previewOf(List<Map<String, dynamic>> checks) =>
+          ApprovalPreview.fromJson(<String, dynamic>{
+            'outcome': 'blocked',
+            'can_approve': false,
+            'checks': checks,
+          });
+
+      // Gate 1's fail-closed path when the judge cannot be reached.
+      final ApprovalPreview outage = previewOf(<Map<String, dynamic>>[
+        <String, dynamic>{
+          'name': 'llm_judge_faithfulness',
+          'passed': false,
+          'severity': 'block',
+          'detail':
+              'Gate 1 validation failed closed: validation judge service is unavailable.',
+        },
+      ]);
+      expect(outage.canApprove, isFalse);
+      expect(outage.blockers, hasLength(1));
+      expect(outage.blockedByInfrastructure, isTrue,
+          reason: 'an outage must not read as "your note is wrong"');
+
+      // A real content block.
+      final ApprovalPreview content = previewOf(<Map<String, dynamic>>[
+        <String, dynamic>{
+          'name': 'provenance_check',
+          'passed': false,
+          'severity': 'block',
+          'detail': 'Unsupported claim: evidence id not found',
+        },
+      ]);
+      expect(content.blockers, hasLength(1));
+      expect(content.blockedByInfrastructure, isFalse);
+      expect(content.infrastructureBlockers, isEmpty);
+    });
+
+    test('withSource marks a template-served brief, not a model-written one', () {
+      final DoctorBrief brief = DoctorBrief.fromJson(<String, dynamic>{
+        'patient': <String, dynamic>{'id': 'p1', 'name': 'Demo', 'age': 52},
+        'chief_complaint': <String, dynamic>{'text': 'x'},
+      });
+      expect(brief.servedByTemplate, isFalse);
+      expect(brief.withSource('llm').servedByTemplate, isFalse);
+      expect(brief.withSource('fallback').servedByTemplate, isTrue);
+      // Everything else must survive the copy.
+      final DoctorBrief fallback = brief.withSource('fallback');
+      expect(fallback.patientName, 'Demo');
+      expect(fallback.chiefComplaint?.text, 'x');
+    });
+
+    test('a read-back brief keeps the label its generation_source gives it', () {
+      // The brief screen must not claim a model wrote a template summary, even
+      // when this session fetched it rather than generating it.
+      DoctorBrief briefWith(String? source) => DoctorBrief.fromJson(
+            <String, dynamic>{
+              'patient': <String, dynamic>{'id': 'p1'},
+              'chief_complaint': <String, dynamic>{'text': 'x'},
+              if (source != null) 'generation_source': source,
+            },
+          );
+
+      expect(briefWith('llm').servedByTemplate, isFalse);
+      expect(briefWith('fallback_template').servedByTemplate, isTrue);
+      expect(briefWith('seed').servedByTemplate, isTrue);
+      // An older server that omits the field must not crash or over-claim.
+      expect(briefWith(null).servedByTemplate, isFalse);
+      // ...and the envelope fallback still applies for that older server.
+      expect(briefWith(null).withSource('fallback').servedByTemplate, isTrue);
+      // The envelope can never talk a payload out of its own provenance.
+      expect(
+        briefWith('fallback_template').withSource('llm').servedByTemplate,
+        isTrue,
+      );
+    });
   });
 
   group('Consultation', () {

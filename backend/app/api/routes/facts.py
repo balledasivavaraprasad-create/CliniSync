@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query, Body, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from app.api.deps import get_db_session, get_current_user, get_request_id, CurrentUser
+from app.api.deps import get_db_session, get_current_user, get_request_id, CurrentUser, require_patient_id
 from app.api.errors import NotFoundError
 from app.models.clinical_fact import ClinicalFact
 from app.models.document import Document
@@ -25,6 +25,7 @@ def list_facts(
     db: Session = Depends(get_db_session),
     request_id: str = Depends(get_request_id),
 ):
+    patient_id = require_patient_id(db, patient_id)
     query = db.query(ClinicalFact).filter(ClinicalFact.patient_id == patient_id)
     if type:
         query = query.filter(ClinicalFact.fact_type == type)

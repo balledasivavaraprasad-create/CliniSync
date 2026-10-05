@@ -5,6 +5,7 @@ import json
 import structlog
 import hashlib
 
+from app.api.errors import IssueNotFoundError
 from app.models.contradiction import Contradiction
 from app.models.document import Document
 from app.models.clinical_fact import ClinicalFact
@@ -79,7 +80,10 @@ class ContradictionService:
     ) -> Dict[str, Any]:
         iss = db.query(Contradiction).filter(Contradiction.id == issue_id).first()
         if not iss:
-            raise ValueError(f"Issue {issue_id} not found")
+            raise IssueNotFoundError(
+                f"Review item {issue_id} is no longer in the queue. "
+                "It may have been recomputed or removed."
+            )
 
         if status:
             iss.status = status
@@ -115,7 +119,11 @@ class ContradictionService:
             }
 
         patient = db.query(Patient).filter(Patient.id == patient_id).first()
-        docs = db.query(Document).filter(Document.id == patient_id).all()
+        # Was `Document.id == patient_id`, which matches nothing (a document id
+        # is never a patient id), so the date-conflict detector below never had
+        # documents to inspect and never fired
+        # (docs/frontend/API_MISMATCHES.md O-02).
+        docs = db.query(Document).filter(Document.patient_id == patient_id).all()
         facts = db.query(ClinicalFact).filter(ClinicalFact.patient_id == patient_id).all()
 
         detected = []
@@ -147,9 +155,19 @@ class ContradictionService:
         # 2. Date conflicts: Document date in the future or before DOB
         now_dt = datetime.now(timezone.utc)
         for d in docs:
-            if d.document_date and d.document_date > now_dt:
+            # SQLite hands back naive datetimes for columns written without a
+            # timezone, while `now_dt` is aware — comparing them raises
+            # `TypeError`. This detector never ran before the `Document.patient_id`
+            # filter was corrected, so the bug stayed hidden. Stored values are
+            # treated as UTC, which is what `utc_now()` writes.
+            doc_date = d.document_date
+            if doc_date is None:
+                continue
+            if doc_date.tzinfo is None:
+                doc_date = doc_date.replace(tzinfo=timezone.utc)
+            if doc_date > now_dt:
                 title = f"Future Document Date on {d.original_filename}"
-                desc = f"Document {d.original_filename} has a recorded date of {d.document_date.strftime('%Y-%m-%d')}, which is in the future."
+                desc = f"Document {d.original_filename} has a recorded date of {doc_date.strftime('%Y-%m-%d')}, which is in the future."
                 fp = cls._compute_fingerprint(IssueType.date_conflict.value, title, patient_id)
                 prev = status_map.get(fp)
                 iss = Contradiction(
@@ -161,7 +179,7 @@ class ContradictionService:
                     description=desc,
                     related_document_ids=json.dumps([d.id]),
                     related_fact_ids=json.dumps([]),
-                    detail_json=json.dumps({"date": d.document_date.isoformat()}),
+                    detail_json=json.dumps({"date": doc_date.isoformat()}),
                     status=prev["status"] if prev else "open",
                     doctor_note=prev["doctor_note"] if prev else None
                 )

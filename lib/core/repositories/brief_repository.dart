@@ -34,10 +34,17 @@ class BriefRepository {
       timeout: _long,
       parse: (dynamic d) => DoctorBrief.fromJson(asMap(d)),
     );
-    return res.data;
+    // The backend now reports `meta.source = "fallback"` when the deterministic
+    // template served the request instead of the model, so the screen can say so
+    // instead of implying a model wrote it.
+    return res.data.withSource(res.meta.source);
   }
 
   /// `GET /patients/{id}/brief/latest` — 404 when no brief exists yet.
+  ///
+  /// Reading a stored brief back reports `db`, not how it was generated, so a
+  /// brief loaded later is treated as model-written unless the caller knows
+  /// otherwise. The persisted `generation_source` is not exposed on this route.
   Future<DoctorBrief> latest(String patientId) async {
     try {
       final res = await _client.get<dynamic>(

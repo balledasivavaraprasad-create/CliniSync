@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:clinicsync/core/animations/motion.dart';
 import 'package:clinicsync/core/constants/app_assets.dart';
 import 'package:clinicsync/core/theme/app_colors.dart';
 import 'package:clinicsync/core/theme/app_radii.dart';
@@ -607,6 +608,119 @@ void main() {
       expect(AppTypography.body.fontFamily, AppFont.sans);
       expect(AppRadii.pill, greaterThan(0));
       expect(AppSpacing.screenH, 20);
+    });
+  });
+
+  group('C37 LineReveal — the landing page headline wipe', () {
+    const double lineHeight = 43.2; // displayHero 40 × 1.08
+
+    // Landing page (`style.css:290-295`): translateY(115%), 1.1 s,
+    // `--ease-out cubic-bezier(.16,1,.3,1)`, delays .09 s / .18 s.
+
+    Future<void> reveal(WidgetTester tester) => tester.pumpWidget(
+          harness(
+            const LineReveal(
+              lineHeight: lineHeight,
+              lines: <Widget>[
+                Text('Every Record,', textScaler: TextScaler.noScaling),
+                Text('Clinically', textScaler: TextScaler.noScaling),
+                Text('Connected.', textScaler: TextScaler.noScaling),
+              ],
+            ),
+            width: 390,
+          ),
+        );
+
+    testWidgets('renders every line immediately at full size',
+        (WidgetTester tester) async {
+      await reveal(tester);
+      await tester.pump();
+      expect(find.text('Every Record,'), findsOneWidget);
+      expect(find.text('Clinically'), findsOneWidget);
+      expect(find.text('Connected.'), findsOneWidget);
+    });
+
+    testWidgets('holds the lines below their clips until they play',
+        (WidgetTester tester) async {
+      await reveal(tester);
+      // Before the first frame the controller is at 0, so nothing is offset
+      // away — the clip boxes still reserve the full stacked height.
+      await tester.pump();
+      final Size size = tester.getSize(find.byType(LineReveal));
+      expect(size.height, greaterThan(lineHeight * 3 - 1));
+      expect(size.height, lessThan(lineHeight * 3 + lineHeight));
+    });
+
+    testWidgets('completes and lands at translateY 0',
+        (WidgetTester tester) async {
+      await reveal(tester);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+      final Iterable<Transform> transforms = tester
+          .widgetList<Transform>(find.descendant(
+            of: find.byType(LineReveal),
+            matching: find.byType(Transform),
+          ));
+      expect(transforms, isNotEmpty);
+      for (final Transform t in transforms) {
+        final Matrix4 m = t.transform;
+        expect(m.getTranslation().y, 0);
+      }
+    });
+
+    testWidgets('staggers: line 3 finishes later than line 1',
+        (WidgetTester tester) async {
+      await reveal(tester);
+      await tester.pump();
+      // Mid-way through, the first line has moved and the last has not yet.
+      await tester.pump(const Duration(milliseconds: 600));
+      final List<double> offsets = tester
+          .widgetList<Transform>(find.descendant(
+            of: find.byType(LineReveal),
+            matching: find.byType(Transform),
+          ))
+          .map((Transform t) => t.transform.getTranslation().y)
+          .toList();
+      expect(offsets, hasLength(3));
+      expect(offsets[0], lessThan(offsets[2]),
+          reason: 'later lines are still further below their clip');
+      expect(offsets[2], greaterThan(0));
+    });
+
+    testWidgets('honours reduce-motion by showing the finished state',
+        (WidgetTester tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(tester.platformDispatcher
+          .clearAccessibilityFeaturesTestValue);
+      await reveal(tester);
+      await tester.pump();
+      for (final Transform t in tester.widgetList<Transform>(
+        find.descendant(
+          of: find.byType(LineReveal),
+          matching: find.byType(Transform),
+        ),
+      )) {
+        expect(t.transform.getTranslation().y, 0);
+      }
+    });
+
+    test('matches the landing page timing', () {
+      const LineReveal reveal = LineReveal(
+        lineHeight: lineHeight,
+        lines: <Widget>[SizedBox.shrink()],
+      );
+      expect(reveal.duration, const Duration(milliseconds: 1100));
+      expect(reveal.stagger, const Duration(milliseconds: 90));
+      expect(reveal.startOffset, 1.15);
+    });
+
+    test('SectionReveal can hold off before revealing', () {
+      const SectionReveal held = SectionReveal(
+        delay: Duration(milliseconds: 700),
+        child: SizedBox.shrink(),
+      );
+      expect(held.delay, const Duration(milliseconds: 700));
     });
   });
 

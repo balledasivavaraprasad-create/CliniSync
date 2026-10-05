@@ -20,6 +20,9 @@ abstract final class ErrorMessages {
         'AI is temporarily unavailable. Showing the last available information.',
     'STT_FAILED': 'We couldn\'t transcribe that recording.',
     'GATE1_BLOCKED': 'Approval is on hold: some items need your review.',
+    'VALIDATION_UNAVAILABLE':
+        'The automated check could not run, so approval is paused. '
+            'Nothing is wrong with your notes — try again in a moment.',
     'GATE2_BLOCKED':
         'This summary needs another pass. Try generating it again.',
     'CONSULTATION_NOT_APPROVABLE': 'This consultation cannot be approved yet.',

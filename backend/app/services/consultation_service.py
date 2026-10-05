@@ -20,7 +20,12 @@ from app.ai.gateway import llm_gateway
 from app.validation.gate1_memory import gate1_validator
 from app.validation.gate2_output import gate2_validator
 from app.services.audit_service import audit_service
-from app.api.errors import Gate1BlockedError, InvalidStateTransitionError, NotFoundError
+from app.api.errors import (
+    Gate1BlockedError,
+    InvalidStateTransitionError,
+    NotFoundError,
+    ValidationUnavailableError,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -244,7 +249,21 @@ class ConsultationService:
         )
 
         if outcome == ValidationOutcome.blocked:
-            reasons = [c["detail"] for c in checks if c["severity"] == "block" and not c["passed"]]
+            blockers = [c for c in checks if c["severity"] == "block" and not c["passed"]]
+            reasons = [c["detail"] for c in blockers]
+
+            # An outage is not a content rejection. Gate 1 still fails closed, but
+            # the client needs to be able to tell the difference: 503 is
+            # retryable and reads to a doctor as "try again", while 422 GATE1_
+            # BLOCKED says their note is not approvable. Previously both arrived
+            # as 422, so a provider rate-limit looked like the doctor's fault.
+            if blockers and all(c.get("code") == "VALIDATION_UNAVAILABLE" for c in blockers):
+                raise ValidationUnavailableError(
+                    "The automated faithfulness check is unavailable, so approval "
+                    "is paused. No content was written to clinical memory. "
+                    "Please try again.",
+                    details={"checks": blockers},
+                )
             raise Gate1BlockedError(f"Gate 1 blocked approval: {'; '.join(reasons)}")
 
         cns, ver = self.get_consultation(db, cid)

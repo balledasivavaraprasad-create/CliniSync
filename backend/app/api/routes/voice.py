@@ -19,8 +19,8 @@ async def upload_voice_note(
     db: Session = Depends(get_db_session),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import resolve_patient_id
-    pid = resolve_patient_id(patient_id)
+    from app.api.deps import require_patient_id
+    pid = require_patient_id(db, patient_id)
     audio_bytes = await file.read()
     res = await voice_service.process_voice(
         db=db,
@@ -44,8 +44,8 @@ async def transcribe_voice_legacy(
     db: Session = Depends(get_db_session),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import resolve_patient_id
-    pid = resolve_patient_id(patient_id or "pat_demo_patient_001")
+    from app.api.deps import require_patient_id
+    pid = require_patient_id(db, patient_id or "pat_demo_patient_001")
     audio_bytes = await file.read()
     res = await voice_service.process_voice(
         db=db,

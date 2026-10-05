@@ -105,9 +105,33 @@ class ExtractionService:
                 slot="llm_extract",
                 temperature=0.0
             )
-            return res
+            # A gateway can return a schema-valid but empty result — every
+            # provider refused and the fallback path produced no matches. Treat
+            # that the same as an exception so extraction always degrades to the
+            # deterministic regexes instead of silently yielding no facts.
+            if res is not None and not _is_empty(res):
+                return res
+            logger.warning("entity_extraction_returned_empty_falling_back")
         except Exception as e:
             logger.error("entity_extraction_llm_failed_falling_back", error=str(e))
-            return self._fallback_deterministic_extract(pages)
+        return self._fallback_deterministic_extract(pages)
+
+def _is_empty(result: ExtractionResult) -> bool:
+    """True when an `ExtractionResult` carries nothing at all."""
+    return not any(
+        getattr(result, field, None)
+        for field in (
+            "medications",
+            "investigations",
+            "diagnoses",
+            "symptoms",
+            "allergies",
+            "procedures",
+            "observations",
+            "vitals",
+            "document_level_dates",
+        )
+    )
+
 
 extraction_service = ExtractionService()

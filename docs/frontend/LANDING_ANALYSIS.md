@@ -411,6 +411,7 @@ wordmark in the serif, uppercase, at `36px / letter-spacing .12em`.
 | Background video — **yes** | `AmbientLayer` + `AmbientVideo`: muted, looping, `BoxFit.cover`, no controls, poster always painted underneath, paused when backgrounded, disabled under reduce-motion. Skipped on web (platform view). `DECISIONS.md` FD-04/FD-05. |
 | Hero video scrim + vignette — **yes** | `AppColors.ambientWash` over the video, plus `AmbientLayer`'s three-stop `bgCanvas` wash; hero `washOpacity: 0.52`. FD-06. |
 | Scroll reveal (`is-in`, fade + translate) — **yes** | `SectionReveal`: fade + 12 px upward translate, 280 ms, 40 ms stagger, once per screen build, honouring reduce-motion. |
+| Hero line wipe (`.hero__title .line__in`, 1.1 s, 90 ms stagger, `overflow:hidden` per line) — **yes** | `LineReveal`: identical mechanic — one clip box per line, text starting at `translateY(115%)` and rising over 1100 ms on `Curves.easeOutExpo` (the landing page's `--ease-out`), 90 ms apart. Applied to the Home hero headline |
 | Hero parallax — **yes** | `AmbientParallax`, factor clamped to ≤ 0.25 (default 0.18), hero only, off under reduce-motion. |
 | Sticky nav blur — **yes** (but the reference image shows a floating bottom bar, not a top bar) | `StickyActionBar` / bottom nav are opaque white with `AppShadows.float`; **no backdrop blur**, because §5.2 only allows it "where the reference shows a floating bar" and the reference's own nav is solid white. |
 | Hover lift/glow on cards — **yes** | `PressScale`: scale 0.98, 120 ms ease-out. |

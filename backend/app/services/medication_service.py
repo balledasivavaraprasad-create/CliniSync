@@ -44,6 +44,12 @@ class MedicationService:
                     "id": m.id,
                     "patient_id": m.patient_id,
                     "canonical_name": m.canonical_name,
+                    # `group_key` is the column the history endpoint keys on,
+                    # and the list payload was omitting it, so a client had to
+                    # guess that `canonical_name` would work as the key
+                    # (docs/frontend/API_MISMATCHES.md M-07). It is emitted
+                    # alongside the existing fields, so nothing breaks.
+                    "group_key": m.group_key or m.canonical_name,
                     "raw_name": m.raw_name,
                     "strength_value": m.strength_value,
                     "strength_unit": m.strength_unit,
@@ -52,6 +58,8 @@ class MedicationService:
                     "frequency_text": m.frequency_text,
                     "route": m.route,
                     "duration_text": m.duration_text,
+                    "start_date": m.start_date.isoformat() if m.start_date else None,
+                    "stop_date": m.stop_date.isoformat() if m.stop_date else None,
                     "status": m.status,
                     "status_reason": m.status_reason,
                     "confidence": m.confidence,

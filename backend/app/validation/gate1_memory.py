@@ -116,11 +116,15 @@ class Gate1MemoryValidator:
             )
             judge_verdict = verdict
             if not j_pass and j_sev == "judge_unavailable":
-                # Fail closed for Gate 1 if judge fails per Section 12.1
+                # Fail closed for Gate 1 if judge fails per Section 12.1.
+                # `code` lets the approve route tell an outage apart from a
+                # content rejection without pattern-matching the message, so it
+                # can answer 503 (retryable) instead of 422.
                 checks.append({
                     "name": "llm_judge_faithfulness",
                     "passed": False,
                     "severity": "block",
+                    "code": "VALIDATION_UNAVAILABLE",
                     "detail": "Gate 1 validation failed closed: validation judge service is unavailable."
                 })
             elif not j_pass:

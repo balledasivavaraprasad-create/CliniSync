@@ -25,7 +25,7 @@ Screens never import `ApiClient`. `AsyncSlice<T>` in
 | `lib/shared/cards/` | composite cards (Patient, Ticket, Evidence, Checklist, Ambient) |
 | `lib/features/` | one directory per §9 screen area |
 | `lib/dev/` | token + component galleries (`/galleries/*`) |
-| `test/` | 112 tests across models, design system, components, API client |
+| `test/` | 127 Flutter tests across models, design system, components, API client |
 | `tools/` | backend probes, fixture capture, screenshot harness, ambient-still generator |
 
 ## Docs
@@ -41,6 +41,7 @@ Screens never import `ApiClient`. `AsyncSlice<T>` in
 | `REMOVED_FILES.md` | every file deleted by C04, with the disposition rule applied |
 | `QA/` | reference-vs-implementation mapping and screenshots |
 | `API_PROBE.json` | machine-readable dump of every endpoint's real payload shape |
+| `../tests/test_api_contract.py` | backend contract tests the app depends on |
 
 ## Running it
 

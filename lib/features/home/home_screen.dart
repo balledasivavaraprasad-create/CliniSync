@@ -178,25 +178,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              // §6.4 text replacement table.
-                              Text(
-                                'Every Record,',
-                                style: AppTypography.displayHero,
-                              ),
-                              Text(
-                                'Clinically',
-                                style: AppTypography.displayHeroAccent,
-                              ),
-                              Text(
-                                'Connected.',
-                                style: AppTypography.displayHeroAccent,
+                              // §6.4 text replacement table. Animated line by
+                              // line with the landing page's masked
+                              // `translateY(115%)` wipe
+                              // (`style.css:290-295`, landing §7) — the
+                              // headline is the one element the reference
+                              // page makes a performance of.
+                              LineReveal(
+                                lineHeight: AppTypography.displayHero.fontSize! *
+                                    AppTypography.displayHero.height!,
+                                lines: <Widget>[
+                                  Text(
+                                    'Every Record,',
+                                    style: AppTypography.displayHero,
+                                  ),
+                                  Text(
+                                    'Clinically',
+                                    style: AppTypography.displayHeroAccent,
+                                  ),
+                                  Text(
+                                    'Connected.',
+                                    style: AppTypography.displayHeroAccent,
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: AppSpacing.sm),
-                              Text(
-                                'AI-assisted clinical context,\nalways under your review.',
-                                style: AppTypography.body.copyWith(
-                                  color: AppColors.textSecondary,
-                                  height: 1.5,
+                              // Held back until the headline has landed, the
+                              // way the landing page sequences hero copy.
+                              SectionReveal(
+                                index: 0,
+                                delay: const Duration(milliseconds: 700),
+                                offset: 8,
+                                child: Text(
+                                  'AI-assisted clinical context,\nalways under your review.',
+                                  style: AppTypography.body.copyWith(
+                                    color: AppColors.textSecondary,
+                                    height: 1.5,
+                                  ),
                                 ),
                               ),
                             ],

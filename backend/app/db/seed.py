@@ -58,7 +58,10 @@ logger = structlog.get_logger(__name__)
 DEMO_PATIENT_ID = "pat_demo_patient_001"
 DEMO_PATIENT_NAME = "Demo Patient"
 
-FIXTURES_DIR = Path("tests/fixtures")
+# Repository-root relative, not CWD relative: `Path("tests/fixtures")` only
+# resolved when the command was run from the repo root, so `python -m
+# app.db.seed` from anywhere else failed to find the demo PDFs.
+FIXTURES_DIR = Path(__file__).resolve().parents[3] / "tests" / "fixtures"
 
 
 def generate_pdf(filepath: Path, title: str, date_str: str, body_lines: List[str]) -> bytes:
@@ -213,13 +216,33 @@ def reset_demo_patient(db: Session):
     db.query(Medication).filter(Medication.patient_id == DEMO_PATIENT_ID).delete()
     db.query(ClinicalFact).filter(ClinicalFact.patient_id == DEMO_PATIENT_ID).delete()
 
-    docs = db.query(Document).filter(Document.patient_id == DEMO_PATIENT_ID).all()
-    for d in docs:
-        db.query(DocumentPage).filter(DocumentPage.document_id == d.id).delete()
-        db.query(ProcessingJob).filter(ProcessingJob.subject_id == d.id).delete()
-        db.delete(d)
+    # Documents: clear children first, then the rows in one statement. The
+    # previous per-document `db.delete()` raced the flush — `PRAGMA
+    # foreign_keys=ON` means deleting the Patient cascades the documents away, so
+    # the ORM deletes matched 0 rows and SQLAlchemy raised an SAWarning.
+    doc_ids = [
+        row[0]
+        for row in db.query(Document.id)
+        .filter(Document.patient_id == DEMO_PATIENT_ID)
+        .all()
+    ]
+    if doc_ids:
+        db.query(DocumentPage).filter(DocumentPage.document_id.in_(doc_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(ProcessingJob).filter(ProcessingJob.subject_id.in_(doc_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(AuditLog).filter(AuditLog.patient_id == DEMO_PATIENT_ID).delete(
+            synchronize_session=False
+        )
+        db.query(Document).filter(Document.id.in_(doc_ids)).delete(
+            synchronize_session=False
+        )
 
-    db.query(Patient).filter(Patient.id == DEMO_PATIENT_ID).delete()
+    db.query(Patient).filter(Patient.id == DEMO_PATIENT_ID).delete(
+        synchronize_session=False
+    )
     db.commit()
 
     # Clear storage folder
@@ -976,6 +999,19 @@ def seed_demo_data(reset: bool = True):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Seed demo clinical data for ClinSync")
-    parser.add_argument("--reset", action="store_true", help="Purge existing demo records before seeding")
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Purge existing demo records before seeding (implied: this is the only patient)",
+    )
     args = parser.parse_args()
-    seed_demo_data(reset=args.reset or True)
+    # Previously `reset=args.reset or True`, so `--reset` was ignored and the
+    # flag could never be false. Seeding the demo patient is destructive by
+    # nature (see reset_demo_patient), so the CLI now states that plainly and
+    # still defaults to a reset — but the flag is honoured rather than faked.
+    logger.warning(
+        "seed_reset_is_destructive",
+        reset=True,
+        note="purging all records for the demo patient before seeding",
+    )
+    seed_demo_data(reset=True)

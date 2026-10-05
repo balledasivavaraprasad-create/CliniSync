@@ -13,8 +13,8 @@ def list_investigations(
     db: Session = Depends(get_db_session),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import resolve_patient_id
-    pid = resolve_patient_id(patient_id)
+    from app.api.deps import require_patient_id
+    pid = require_patient_id(db, patient_id)
     invs = lab_service.get_latest_investigations(db=db, patient_id=pid)
     return {
         "success": True,
@@ -29,9 +29,9 @@ def get_all_investigation_trends(
     db: Session = Depends(get_db_session),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import resolve_patient_id
+    from app.api.deps import require_patient_id
     from app.models.investigation import Investigation
-    pid = resolve_patient_id(patient_id)
+    pid = require_patient_id(db, patient_id)
     canonical_tests = db.query(Investigation.test_name_canonical).filter(
         Investigation.patient_id == pid
     ).distinct().all()
@@ -66,8 +66,8 @@ def get_investigation_trend(
     db: Session = Depends(get_db_session),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import resolve_patient_id
-    pid = resolve_patient_id(patient_id)
+    from app.api.deps import require_patient_id
+    pid = require_patient_id(db, patient_id)
     trend = lab_service.get_investigation_trend(db=db, patient_id=pid, group_key=group_key)
     return {
         "success": True,

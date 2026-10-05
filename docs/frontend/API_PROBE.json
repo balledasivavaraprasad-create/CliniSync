@@ -11,7 +11,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_0ea5ba2f9cd64646",
+      "request_id": "req_ff3ab0fa6d404141",
       "source": "system"
     },
     "all_sources": [
@@ -36,7 +36,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_c1d2af10b3614aeb",
+      "request_id": "req_5d2ccd03684b4cb9",
       "source": "system"
     },
     "all_sources": [
@@ -47,12 +47,15 @@
       "app": "str",
       "status": "str",
       "database": "str",
+      "schema_complete": "bool",
+      "missing_tables": "[]",
       "storage_writable": "bool",
       "validation_enabled": "bool",
       "providers": {
         "gemini": "str",
         "groq": "str"
-      }
+      },
+      "llm_available": "bool"
     }
   },
   "patients.list": {
@@ -67,7 +70,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_0373c723a844442a",
+      "request_id": "req_d76bdaaaaee440f3",
       "source": "db"
     },
     "all_sources": [
@@ -101,7 +104,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_51c4b974e1c94bfa",
+      "request_id": "req_2b3c6ade5ff144f9",
       "source": "db"
     },
     "all_sources": [
@@ -132,7 +135,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_744301d74f7b415b",
+      "request_id": "req_6c719f4746f747f3",
       "source": "db"
     },
     "all_sources": [
@@ -174,7 +177,7 @@
         ],
         "current_medications": [
           "\u2026",
-          "\u00d74"
+          "\u00d72"
         ],
         "allergies": [
           "\u2026",
@@ -182,27 +185,27 @@
         ],
         "recent_investigations": [
           "\u2026",
-          "\u00d73"
+          "\u00d72"
         ],
         "important_trends": [
           "\u2026",
-          "\u00d73"
+          "\u00d71"
         ],
         "attention_items": [
           "\u2026",
-          "\u00d71"
+          "\u00d72"
         ],
         "contradictions": [
           "\u2026",
-          "\u00d72"
+          "\u00d71"
         ],
         "missing_information": [
           "\u2026",
-          "\u00d71"
+          "\u00d72"
         ],
         "evidence_shortcuts": [
           "\u2026",
-          "\u00d78"
+          "\u00d73"
         ],
         "disclaimer": "str"
       },
@@ -214,7 +217,7 @@
           "severity": "str",
           "issue_type": "str"
         },
-        "\u00d74"
+        "\u00d73"
       ],
       "timeline_preview": [
         {
@@ -297,7 +300,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_4203d60daa834b2f",
+      "request_id": "req_c2fccb6dd99d4632",
       "source": "db"
     },
     "all_sources": [
@@ -334,7 +337,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_6e9dea0634864d5b",
+      "request_id": "req_a7856c2c851545a1",
       "source": "db"
     },
     "all_sources": [
@@ -371,7 +374,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_7812d5fd82e34814",
+      "request_id": "req_e4f10cd8a17e485a",
       "source": "db"
     },
     "all_sources": [
@@ -413,7 +416,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_a922287ceffe4777",
+      "request_id": "req_e557ecbd23324d53",
       "source": "db"
     },
     "all_sources": [
@@ -451,7 +454,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_70c39e59f8d14f97",
+      "request_id": "req_f807f270dfcb4b6a",
       "source": "db"
     },
     "all_sources": [
@@ -487,7 +490,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_f5bd12617f7a4b33",
+      "request_id": "req_dd726ab8c59d4a21",
       "source": "db"
     },
     "all_sources": [
@@ -499,6 +502,7 @@
         "id": "str",
         "patient_id": "str",
         "canonical_name": "str",
+        "group_key": "str",
         "raw_name": "str",
         "strength_value": "float",
         "strength_unit": "str",
@@ -507,6 +511,8 @@
         "frequency_text": "str",
         "route": "NoneType",
         "duration_text": "NoneType",
+        "start_date": "str",
+        "stop_date": "NoneType",
         "status": "str",
         "status_reason": "str",
         "confidence": "float",
@@ -514,7 +520,7 @@
         "source_document_id": "str",
         "conflict_ids": [
           "str",
-          "\u00d72"
+          "\u00d71"
         ],
         "has_conflict": "bool",
         "history_count": "int"
@@ -534,7 +540,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_e5a0a3d96bbd43a3",
+      "request_id": "req_51bccf4ab566446f",
       "source": "db"
     },
     "all_sources": [
@@ -572,7 +578,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_316e37748f8b43db",
+      "request_id": "req_16d618cb44754515",
       "source": "db"
     },
     "all_sources": [
@@ -611,7 +617,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_e850dc4d8014447d",
+      "request_id": "req_3c42c64df9784012",
       "source": "db"
     },
     "all_sources": [
@@ -651,7 +657,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_90226e08a69745ba",
+      "request_id": "req_8a2defe228ba43c8",
       "source": "db"
     },
     "all_sources": [
@@ -678,7 +684,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_bbeebdd2b928429f",
+      "request_id": "req_7643fe3304da46f4",
       "source": "db"
     },
     "all_sources": [
@@ -693,25 +699,18 @@
         "severity": "str",
         "title": "str",
         "description": "str",
-        "related_document_ids": [
-          "str",
-          "\u00d72"
-        ],
-        "related_fact_ids": [
-          "str",
-          "\u00d72"
-        ],
+        "related_document_ids": "[]",
+        "related_fact_ids": "[]",
         "detail_json": {
-          "drug": "str",
-          "source_1": "\u2026",
-          "source_2": "\u2026"
+          "prompt": "str",
+          "reason": "str"
         },
         "status": "str",
         "doctor_note": "NoneType",
         "created_at": "str",
         "updated_at": "str"
       },
-      "\u00d74"
+      "\u00d73"
     ]
   },
   "brief.latest": {
@@ -726,7 +725,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_14ab05de662e4df0",
+      "request_id": "req_ea92cfa99c054537",
       "source": "db"
     },
     "all_sources": [
@@ -754,7 +753,7 @@
           "text": "str",
           "evidence_ids": [
             "str",
-            "\u00d71"
+            "\u00d72"
           ],
           "confidence_band": "str"
         },
@@ -774,7 +773,7 @@
           "confidence_band": "str",
           "conflict_flag": "bool"
         },
-        "\u00d74"
+        "\u00d72"
       ],
       "allergies": [
         {
@@ -800,7 +799,7 @@
             "\u00d71"
           ]
         },
-        "\u00d73"
+        "\u00d72"
       ],
       "important_trends": [
         {
@@ -816,30 +815,36 @@
             "\u00d73"
           ]
         },
-        "\u00d73"
+        "\u00d71"
       ],
       "attention_items": [
         {
           "text": "str",
           "severity": "str",
-          "evidence_ids": "[]"
+          "evidence_ids": [
+            "str",
+            "\u00d71"
+          ]
         },
-        "\u00d71"
+        "\u00d72"
       ],
       "contradictions": [
         {
           "issue_id": "str",
           "text": "str",
-          "sources": "[]"
+          "sources": [
+            "str",
+            "\u00d71"
+          ]
         },
-        "\u00d72"
+        "\u00d71"
       ],
       "missing_information": [
         {
           "prompt": "str",
           "reason": "str"
         },
-        "\u00d71"
+        "\u00d72"
       ],
       "evidence_shortcuts": [
         {
@@ -848,7 +853,7 @@
           "document_id": "str",
           "page": "int"
         },
-        "\u00d78"
+        "\u00d73"
       ],
       "disclaimer": "str",
       "readiness_score": "int"
@@ -866,7 +871,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_5bae5756516e4d5e",
+      "request_id": "req_60980f38482d4140",
       "source": "db"
     },
     "all_sources": [
@@ -927,7 +932,7 @@
     ],
     "success": false,
     "meta": {
-      "request_id": "req_5d26a1efc24642e3"
+      "request_id": "req_389d5e6a9d754de0"
     },
     "all_sources": [],
     "error_code": "HTTP_ERROR",
@@ -945,7 +950,7 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_7ed5add1d2f14112",
+      "request_id": "req_c16970552f8c444e",
       "source": "db"
     },
     "all_sources": [
@@ -978,7 +983,7 @@
         "created_at": "str",
         "updated_at": "str"
       },
-      "\u00d75"
+      "\u00d74"
     ]
   },
   "brief.generate": {
@@ -995,11 +1000,11 @@
     ],
     "success": true,
     "meta": {
-      "request_id": "req_f21e7f4702634edf",
-      "source": "llm"
+      "request_id": "req_16073c2f629743e9",
+      "source": "fallback"
     },
     "all_sources": [
-      "llm"
+      "fallback"
     ],
     "error_code": null,
     "shape": {
@@ -1076,13 +1081,13 @@
           "test": "str",
           "series": [
             "\u2026",
-            "\u00d73"
+            "\u00d72"
           ],
           "direction": "str",
           "description": "str",
           "evidence_ids": [
             "str",
-            "\u00d73"
+            "\u00d72"
           ]
         },
         "\u00d73"
@@ -1099,7 +1104,10 @@
         {
           "issue_id": "str",
           "text": "str",
-          "sources": "[]"
+          "sources": [
+            "str",
+            "\u00d72"
+          ]
         },
         "\u00d72"
       ],
