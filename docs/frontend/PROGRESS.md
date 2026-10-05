@@ -116,6 +116,9 @@ bug fix**, and each is pinned by `tests/test_api_contract.py` (38 new tests).
 | `/health` no longer touches the DB | A liveness probe that queries the DB restarts a healthy server when the DB is briefly locked |
 | `/health/deep` reports `schema_complete`, answers 503 | Readiness must be actionable from the status code |
 | Seed works from any directory | `FIXTURES_DIR` was CWD-relative, so seeding only worked from the repo root |
+| Seed creates the schema itself | It died on `no such table: patients` on a fresh database unless the server had been booted first |
+| Tests use their own database | The suite ran against the dev `clinsync.db` and left ~50 junk patients per few runs, which pushed the demo patient off page 1 of `GET /patients` — the Home screen then showed test fixtures and looked like a frontend bug. Now redirected to a temp DB via `tests/conftest.py`. |
+| `path_normalization_middleware` removed | It collapsed `/api/v1/api/v1` → `/api/v1`, hiding a real client bug (the base URL *and* every path carried the prefix) from the analyser, the tests and the network tab. With the client fixed, a wrong base URL should 404 loudly. |
 | Seed purge rewritten as ordered bulk deletes | Per-row deletes raced the FK cascade and emitted an `SAWarning` every run |
 | `--reset` no longer pretends to be optional | `reset=args.reset or True` could never be false; the CLI now logs its destructiveness |
 | STT walks its configured chain | `STT_PRIMARY`/`STT_FALLBACK_*` were never read and the default primary was a text-only model, so every recording degraded to a placeholder transcript. **O-07 / M-22** |

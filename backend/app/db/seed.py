@@ -10,7 +10,7 @@ import structlog
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db.database import get_db_context, Base, engine
+from app.db.database import get_db_context, Base, engine, ensure_schema
 from app.models.patient import Patient
 from app.models.document import Document, DocumentPage
 from app.models.clinical_fact import ClinicalFact
@@ -254,6 +254,17 @@ def reset_demo_patient(db: Session):
 def seed_demo_data(reset: bool = True):
     """Seed the database with the complete 6-document longitudinal demo patient"""
     logger.info("seeding_demo_data", reset=reset)
+
+    # A fresh clone has no tables, and without this the seed dies on
+    # `no such table: patients`. The server creates the schema on boot, but the
+    # seed is also a documented way to start from nothing, so it must not depend
+    # on the server having run first.
+    if not ensure_schema():
+        logger.error(
+            "seed_schema_unavailable",
+            note="could not create the schema; check DATABASE_URL",
+        )
+        raise RuntimeError("database schema is incomplete — cannot seed")
 
     create_demo_fixtures()
 

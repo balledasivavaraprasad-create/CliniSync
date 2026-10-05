@@ -300,6 +300,22 @@ def test_ensure_schema_is_additive(tmp_path, monkeypatch):
 
 # ── Error envelope ───────────────────────────────────────────────────────────
 
+def test_a_doubled_api_prefix_is_not_silently_rescued():
+    """A wrong client base URL must fail loudly, not appear to work.
+
+    A middleware used to collapse `/api/v1/api/v1` to `/api/v1`, which hid a real
+    client bug (the base URL and every path both carried the prefix) from the
+    analyser, the tests, and the network tab. The client is fixed and pinned by
+    its own tests; this pins the other half.
+    """
+    res = client.get("/api/v1/api/v1/patients")
+    assert res.status_code == 404, (
+        "a doubled prefix must 404, not be rewritten into a success"
+    )
+    # ...while the correct path still works.
+    assert client.get("/api/v1/patients").status_code == 200
+
+
 def test_errors_never_leak_internals(seeded_pid):
     """§6.6 rule 7: a 500 body must be generic, and must be logged not leaked."""
     res = client.patch("/api/v1/issues/iss_nope", json={"status": "x"})

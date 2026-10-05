@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:clinicsync/core/config/app_config.dart';
+import 'package:clinicsync/core/constants/api_paths.dart';
 import 'package:clinicsync/core/constants/enums.dart';
 import 'package:clinicsync/core/networking/error_messages.dart';
 import 'package:clinicsync/core/theme/app_colors.dart';
@@ -181,8 +182,19 @@ void main() {
   group('§0.2 rule 7 — no hardcoded base URL', () {
     test('the base URL is built by the config layer only', () {
       expect(AppConfig.apiPrefix, '/api/v1');
-      expect(AppConfig.baseUrl, endsWith('/api/v1'));
       expect(AppConfig.baseUrl, isNot(contains('undefined')));
+      // The base URL is the origin alone. Every path in `ApiPaths` is absolute
+      // and already carries `/api/v1`, so a base URL that appended the prefix
+      // sent every request as `/api/v1/api/v1/…` — which only ever worked
+      // because the backend collapses it in a middleware.
+      expect(AppConfig.baseUrl, isNot(contains(AppConfig.apiPrefix)));
+      expect(AppConfig.baseUrl, AppConfig.origin);
+      expect(ApiPaths.health, '${AppConfig.apiPrefix}/health');
+      // …so the two halves compose to exactly one prefix.
+      expect(
+        '${AppConfig.baseUrl}${ApiPaths.patientOverview('p')}',
+        '${AppConfig.origin}/api/v1/patients/p/overview',
+      );
     });
 
     test('normalisation strips the prefix, trailing slashes and adds a scheme', () {

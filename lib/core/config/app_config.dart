@@ -51,19 +51,20 @@ abstract final class AppConfig {
     }
   }
 
-  /// Effective base URL for [ApiClient]: origin + `/api/v1`.
-  static String get baseUrl {
-    final String originValue =
-        _baseUrlOverride.isNotEmpty ? _baseUrlOverride : defaultOrigin;
-    return '$originValue$apiPrefix';
-  }
+  /// The server origin — scheme, host and port, and nothing else.
+  ///
+  /// This is what the settings sheet shows and what the doctor edits.
+  static String get origin =>
+      _baseUrlOverride.isNotEmpty ? _baseUrlOverride : defaultOrigin;
 
-  static String get origin {
-    final String url = baseUrl;
-    return url.endsWith(apiPrefix)
-        ? url.substring(0, url.length - apiPrefix.length)
-        : url;
-  }
+  /// dio's `baseUrl`, which is the **origin only**.
+  ///
+  /// Every path in `ApiPaths` is absolute and already starts with `/api/v1`, so
+  /// appending the prefix here would make every request go out as
+  /// `/api/v1/api/v1/…`. That duplication used to work only because the backend
+  /// carries a `path_normalization_middleware` which collapses it — a bug hidden
+  /// by a workaround. The prefix belongs in the path, never in the base URL.
+  static String get baseUrl => origin;
 
   /// Strips trailing slashes and a trailing `/api/v1`.
   static String normalise(String raw) {

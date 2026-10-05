@@ -290,6 +290,27 @@ validate. No migration needed.
 
 ---
 
+## FD-20 — One `/api/v1`, enforced on both sides
+
+**Decision:** `AppConfig.baseUrl` is the **origin only**. The version prefix
+lives in `ApiPaths`, where dio expects an absolute path, and never in the base
+URL. The backend's `path_normalization_middleware`, which used to collapse
+`/api/v1/api/v1` back down, is deleted.
+
+**Why:** the client was sending a doubled prefix on *every* request. It worked
+only because the server quietly rewrote the path. That is the worst kind of bug:
+`flutter analyze` clean, tests green, and the only symptom visible in the network
+tab. The rewrite also meant the app depended on a server-side accommodation for
+its own mistake, so removing it — or pointing the app at a gateway that does not
+rewrite — would have broken everything at once.
+
+Both halves are now pinned: the Dart test walks every declared path and asserts
+exactly one prefix, the Python test asserts the doubled path 404s, and
+`tools/check_link.py` drives the actual built app in Chrome and fails if any API
+call errors. A silent-success failure mode is not worth an accommodation.
+
+---
+
 ## Deviations from the reference image (`appTheme.jpg`)
 
 | Reference element | ClinSync | Reason |

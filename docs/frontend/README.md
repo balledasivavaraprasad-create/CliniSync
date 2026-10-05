@@ -42,6 +42,8 @@ Screens never import `ApiClient`. `AsyncSlice<T>` in
 | `QA/` | reference-vs-implementation mapping and screenshots |
 | `API_PROBE.json` | machine-readable dump of every endpoint's real payload shape |
 | `../tests/test_api_contract.py` | backend contract tests the app depends on |
+| `../tests/conftest.py` | points the suite at a temp database, never the dev one |
+| `check_link.py` | drives the built app in Chrome and fails if any API call errors |
 
 ## Running it
 

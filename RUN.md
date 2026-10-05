@@ -31,6 +31,9 @@ PYTHONPATH=backend .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --p
 PYTHONPATH=backend .venv/bin/python -m app.db.seed --reset
 ```
 
+The seed creates the schema itself, so on a fresh clone the first command can
+be the seed — the two do not have to be run in that order.
+
 `GET /api/v1/health/deep` reports `schema_complete` and `missing_tables`, and
 answers **503** when a dependency the app needs is unavailable. `GET /health` is
 deliberately pure liveness — it never touches the database, so a slow or
@@ -55,6 +58,11 @@ something.
 ```bash
 PYTHONPATH=backend .venv/bin/python -m pytest tests/ -q     # 61 passed
 ```
+
+The suite runs against **its own temporary database** (`tests/conftest.py`), not
+the development one, so repeated runs cannot leave test patients behind in the
+data the app reads. The header line of `pytest -v` prints which database is in
+use.
 
 `tests/test_api_contract.py` pins the contract the Flutter app depends on —
 404s for unknown patients and issues, `group_key` on the medication list, an

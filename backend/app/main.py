@@ -74,6 +74,14 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # There used to be a middleware here that collapsed a doubled
+    # `/api/v1/api/v1` prefix. It existed because the Flutter client appended
+    # `/api/v1` to its base URL *and* carried it in every path, so every request
+    # went out doubled — and the rewrite hid that from `flutter analyze`, from
+    # the tests, and from anyone reading the network tab. The client is fixed and
+    # pinned by tests, so the rewrite is gone: a misconfigured base URL should
+    # produce a 404 that is obvious, not a silent success.
+
     # CORS
     app.add_middleware(
         CORSMiddleware,
@@ -82,15 +90,6 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
-    # Path normalization middleware (collapses duplicate /api/v1 prefixes from client baseURL misconfigurations)
-    @app.middleware("http")
-    async def path_normalization_middleware(request: Request, call_next):
-        path = request.scope.get("path", "")
-        while path.startswith("/api/v1/api/v1"):
-            path = path.replace("/api/v1/api/v1", "/api/v1", 1)
-        request.scope["path"] = path
-        return await call_next(request)
 
     # Request ID middleware
     @app.middleware("http")
