@@ -6,7 +6,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_config.dart';
 import '../models/specialty.dart';
+import '../models/user_account.dart';
 import '../networking/api_client.dart';
+import '../repositories/auth_repository.dart';
 import '../repositories/brief_repository.dart';
 import '../repositories/clinical_repository.dart';
 import '../repositories/document_repository.dart';
@@ -185,6 +187,33 @@ final voiceRepositoryProvider = Provider<VoiceRepository>(
 final specialtyRepositoryProvider = Provider<SpecialtyRepository>(
   (Ref ref) => SpecialtyRepository(ref.watch(apiClientProvider)),
 );
+
+final authRepositoryProvider = Provider<AuthRepository>(
+  (Ref ref) => AuthRepository(
+    ref.watch(apiClientProvider),
+    ref.watch(sharedPreferencesProvider),
+  ),
+);
+
+class CurrentUserNotifier extends StateNotifier<UserAccount?> {
+  CurrentUserNotifier(this._authRepo) : super(_authRepo.currentUser);
+
+  final AuthRepository _authRepo;
+
+  void setUser(UserAccount? user) {
+    state = user;
+  }
+
+  Future<void> logout() async {
+    await _authRepo.logout();
+    state = null;
+  }
+}
+
+final currentUserProvider =
+    StateNotifierProvider<CurrentUserNotifier, UserAccount?>((Ref ref) {
+  return CurrentUserNotifier(ref.watch(authRepositoryProvider));
+});
 
 /// The specialty catalogue. Never fails: the repository falls back to the
 /// bundled mirror of the backend's seed rows.

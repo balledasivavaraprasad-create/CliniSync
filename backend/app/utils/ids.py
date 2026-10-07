@@ -23,6 +23,7 @@ def report_id() -> str: return generate_id("val")
 def audit_id() -> str: return generate_id("aud")
 def llm_log_id() -> str: return generate_id("llm")
 def request_id() -> str: return generate_id("req")
+def user_id() -> str: return generate_id("usr")
 
 consultation_version_id = version_id
 clinical_memory_id = memory_id

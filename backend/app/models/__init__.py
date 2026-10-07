@@ -13,10 +13,12 @@ from app.models.voice_note import VoiceNote
 from app.models.processing_job import ProcessingJob
 from app.models.validation_report import ValidationReport
 from app.models.audit_log import AuditLog, LLMCallLog
+from app.models.user import User
 
 __all__ = [
     "Base",
     "TimestampMixin",
+    "User",
     "Patient",
     "Document",
     "DocumentPage",

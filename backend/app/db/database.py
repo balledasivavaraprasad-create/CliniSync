@@ -73,6 +73,48 @@ def get_db_context() -> Generator[Session, None, None]:
         db.close()
 
 
+def ensure_default_users(session: Session) -> None:
+    from app.models.user import User
+    from app.utils.hashing import hash_password
+
+    try:
+        if session.query(User.id).first() is None:
+            demo_users = [
+                User(
+                    id="usr_doctor_001",
+                    email="doctor@clinsync.health",
+                    full_name="Dr. Willie Carter, MD",
+                    role="doctor",
+                    specialty="General Medicine",
+                    hashed_password=hash_password("demo1234"),
+                    is_active=True,
+                ),
+                User(
+                    id="usr_doctor_002",
+                    email="sarah.jenkins@clinsync.health",
+                    full_name="Dr. Sarah Jenkins, MD",
+                    role="doctor",
+                    specialty="Cardiology",
+                    hashed_password=hash_password("demo1234"),
+                    is_active=True,
+                ),
+                User(
+                    id="usr_doctor_003",
+                    email="demo@clinsync.health",
+                    full_name="Dr. Alex Mercer, MD",
+                    role="doctor",
+                    specialty="Internal Medicine",
+                    hashed_password=hash_password("demo1234"),
+                    is_active=True,
+                ),
+            ]
+            session.add_all(demo_users)
+            session.commit()
+    except Exception as exc:
+        session.rollback()
+        logger.warning("ensure_default_users_skipped", error=str(exc))
+
+
 def ensure_schema() -> bool:
     """Create any missing tables. Additive only — never drops or alters.
 
@@ -86,6 +128,8 @@ def ensure_schema() -> bool:
 
     try:
         Base.metadata.create_all(bind=engine, checkfirst=True)
+        with SessionLocal() as session:
+            ensure_default_users(session)
     except Exception as exc:  # pragma: no cover - surfaced via /health/deep
         logger.error("ensure_schema_failed", error=str(exc))
         return False

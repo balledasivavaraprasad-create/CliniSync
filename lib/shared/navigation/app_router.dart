@@ -7,6 +7,7 @@ import '../../core/theme/app_typography.dart';
 import '../../dev/component_gallery.dart';
 import '../../dev/token_gallery.dart';
 import '../../features/approval/approval_screen.dart';
+import '../../features/auth/login_screen.dart';
 import '../../features/brief/brief_screen.dart';
 import '../../features/camera/camera_screen.dart';
 import '../../features/consultation/consultation_screen.dart';
@@ -34,6 +35,12 @@ final GoRouter appRouter = GoRouter(
   initialLocation: '/home',
   debugLogDiagnostics: false,
   routes: <RouteBase>[
+    GoRoute(
+      path: '/login',
+      name: RouteNames.login,
+      pageBuilder: (BuildContext context, GoRouterState state) =>
+          const NoTransitionPage<void>(child: LoginScreen()),
+    ),
     ShellRoute(
       builder: (BuildContext context, GoRouterState state, Widget child) =>
           AppShell(location: state.uri.path, child: child),
@@ -179,7 +186,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/patients/:id/consultation/:cid',
-      name: RouteNames.consultation,
+      name: RouteNames.consultationDetail,
       builder: (BuildContext context, GoRouterState state) =>
           ConsultationScreen(
         patientId: state.pathParameters['id'] ?? '',
@@ -236,7 +243,7 @@ final GoRouter appRouter = GoRouter(
     // ── Design-system galleries (C06 / C08 / C10 acceptance)
     GoRoute(
       path: '/galleries',
-      name: RouteNames.componentGallery,
+      name: RouteNames.galleryIndex,
       builder: (BuildContext context, GoRouterState state) =>
           const GalleryIndexScreen(),
     ),

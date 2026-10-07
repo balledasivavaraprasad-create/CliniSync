@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/animations/motion.dart';
 import '../../core/constants/app_assets.dart';
@@ -11,6 +12,7 @@ import '../../core/models/patient.dart';
 import '../../core/repositories/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_radii.dart';
+import '../../core/theme/app_shadows.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/debounce.dart';
@@ -100,12 +102,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     children: <Widget>[
                       CircleIconButton(
                         icon: 'menu',
-                        tooltip: 'Settings',
+                        tooltip: 'Settings & Clinician',
                         onTap: () => showSettingsSheet(context, ref),
                       ),
                       const Spacer(),
-                      // Replaces the reference avatar: no login, so the top-right
-                      // circle is the current specialty (plan §9.1).
+                      // Logged-in clinician pill
+                      PressScale(
+                        onTap: () => showSettingsSheet(context, ref),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: AppRadii.allPill,
+                            boxShadow: AppShadows.card,
+                            border: Border.all(color: AppColors.divider),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              const Icon(
+                                LucideIcons.user,
+                                size: 14,
+                                color: AppColors.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                ref.watch(currentUserProvider)?.fullName.split(',').first ??
+                                    'Dr. Willie Carter',
+                                style: AppTypography.caption.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      // Specialty circle
                       PressScale(
                         onTap: () => unawaited(context.push('/specialty')),
                         child: Container(

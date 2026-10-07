@@ -116,9 +116,11 @@ def create_app() -> FastAPI:
     app.add_exception_handler(Exception, uncaught_error_handler)
 
     # Routes
-    from app.api.routes import health, patients, documents, facts, timeline, medications, investigations, issues, briefs, consultations, memory, voice, audit, specialties
+    from app.api.routes import health, auth, patients, documents, facts, timeline, medications, investigations, issues, briefs, consultations, memory, voice, audit, specialties
     app.include_router(health.router)
     app.include_router(health.router, prefix=settings.API_PREFIX)
+    app.include_router(auth.router)
+    app.include_router(auth.router, prefix=settings.API_PREFIX)
     app.include_router(patients.router, prefix=settings.API_PREFIX)
     app.include_router(documents.router, prefix=settings.API_PREFIX)
     app.include_router(facts.router, prefix=settings.API_PREFIX)

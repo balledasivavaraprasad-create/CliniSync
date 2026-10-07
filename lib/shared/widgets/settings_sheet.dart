@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/animations/motion.dart';
 import '../../core/config/app_config.dart';
@@ -19,7 +20,7 @@ import '../widgets/primitives.dart';
 import 'sheets.dart';
 
 /// Home menu sheet — plan §9.1: API base URL, Demo mode toggle, about /
-/// disclaimer. No login, no profile (plan §0.2 rule 4).
+/// disclaimer, and clinician session details.
 Future<void> showSettingsSheet(BuildContext context, WidgetRef ref) {
   return showModalBottomSheet<void>(
     context: context,
@@ -80,11 +81,15 @@ class _SettingsSheetState extends ConsumerState<_SettingsSheet> {
         ref.watch(specialtyCatalogProvider).value ??
             SpecialtyOption.mirroringBackend();
 
+    final user = ref.watch(currentUserProvider);
+
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SheetScaffold(
         title: 'ClinSync settings',
-        subtitle: 'Prototype · single user · no login',
+        subtitle: user != null
+            ? '${user.fullName} · ${user.specialty}'
+            : 'Clinical workstation configuration',
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(
             AppSpacing.screenH,
@@ -95,6 +100,71 @@ class _SettingsSheetState extends ConsumerState<_SettingsSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
+              // ── Clinician Profile & Session
+              SurfaceCard(
+                padding: const EdgeInsets.all(AppSpacing.sm),
+                child: Row(
+                  children: <Widget>[
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: AppColors.primarySoft,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        LucideIcons.stethoscope,
+                        color: AppColors.primaryDark,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            user?.fullName ?? 'Dr. Willie Carter, MD',
+                            style: AppTypography.titleCard.copyWith(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            '${user?.email ?? "doctor@clinsync.health"} · ${user?.specialty ?? "General Medicine"}',
+                            style: AppTypography.caption.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppColors.danger,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      icon: const Icon(LucideIcons.logOut, size: 16),
+                      label: const Text('Sign out'),
+                      onPressed: () async {
+                        await ref.read(currentUserProvider.notifier).logout();
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                          context.go('/login');
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+
               // ── Connection
               Row(
                 children: <Widget>[

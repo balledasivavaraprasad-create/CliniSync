@@ -38,7 +38,10 @@ abstract final class AppConfig {
   /// The platform-aware default origin, e.g. `http://10.0.2.2:8000`.
   static String get defaultOrigin {
     if (_defineBaseUrl.isNotEmpty) return normalise(_defineBaseUrl);
-    if (kIsWeb) return normalise('http://localhost:$defaultPort');
+    if (kIsWeb) {
+      final webHost = Uri.base.host.isNotEmpty ? Uri.base.host : 'localhost';
+      return normalise('http://$webHost:$defaultPort');
+    }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return normalise('http://$androidEmulatorHost:$defaultPort');

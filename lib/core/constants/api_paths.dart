@@ -11,6 +11,12 @@ abstract final class ApiPaths {
   static const String health = '$v1/health';
   static const String healthDeep = '$v1/health/deep';
 
+  // ── Auth ───────────────────────────────────────────────────────────────
+  static const String login = '$v1/auth/login';
+  static const String register = '$v1/auth/register';
+  static const String authMe = '$v1/auth/me';
+  static const String logout = '$v1/auth/logout';
+
   // ── Reference data ─────────────────────────────────────────────────────
   static const String specialties = '$v1/specialties';
 

@@ -24,6 +24,16 @@ class ClinSyncError(Exception):
         self.details = details or {}
 
 
+class BadRequestError(ClinSyncError):
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__("BAD_REQUEST", message, status.HTTP_400_BAD_REQUEST, details)
+
+
+class UnauthorizedError(ClinSyncError):
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__("UNAUTHORIZED", message, status.HTTP_401_UNAUTHORIZED, details)
+
+
 class NotFoundError(ClinSyncError):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__("NOT_FOUND", message, status.HTTP_404_NOT_FOUND, details)

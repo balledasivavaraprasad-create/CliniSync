@@ -2,6 +2,9 @@
 abstract final class RouteNames {
   const RouteNames._();
 
+  // ── Auth
+  static const String login = 'login';
+
   // ── Shell tabs
   static const String home = 'home';
   static const String patients = 'patients';
@@ -21,6 +24,7 @@ abstract final class RouteNames {
   static const String specialty = 'specialty';
   static const String brief = 'brief';
   static const String consultation = 'consultation';
+  static const String consultationDetail = 'consultation-detail';
   static const String consultationVersions = 'consultation-versions';
   static const String approval = 'approval';
   static const String patientMemory = 'patient-memory';
@@ -30,6 +34,7 @@ abstract final class RouteNames {
   static const String voice = 'voice';
 
   // ── Debug / galleries (task C06/C08/C10 acceptance)
+  static const String galleryIndex = 'gallery-index';
   static const String componentGallery = 'component-gallery';
   static const String tokenGallery = 'token-gallery';
 }
