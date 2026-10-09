@@ -9,15 +9,30 @@ BRAND_TO_GENERIC = {
     "zestril": "lisinopril",
     "prinivil": "lisinopril",
     "prilosec": "omeprazole",
+    "nexium": "esomeprazole",
     "norvasc": "amlodipine",
     "lipitor": "atorvastatin",
+    "crestor": "rosuvastatin",
+    "cozaar": "losartan",
+    "diovan": "valsartan",
+    "plavix": "clopidogrel",
+    "lanoxin": "digoxin",
+    "lasix": "furosemide",
     "augmentin": "amoxicillin-clavulanate",
+    "amoxil": "amoxicillin",
     "advil": "ibuprofen",
     "motrin": "ibuprofen",
     "tylenol": "acetaminophen",
     "paracetamol": "acetaminophen",
     "metformin hcl": "metformin",
     "metformin hydrochloride": "metformin",
+    "synthroid": "levothyroxine",
+    "ventolin": "albuterol",
+    "proair": "albuterol",
+    "tenormin": "atenolol",
+    "lopressor": "metoprolol",
+    "toprol": "metoprolol",
+    "coumadin": "warfarin",
 }
 
 # Standard Frequency mappings
@@ -81,13 +96,85 @@ LAB_CANONICAL_MAP = {
 }
 
 
-def normalize_drug_name(raw_name: str) -> Tuple[str, str]:
-    """Returns (canonical_name, raw_name)"""
+ROUTE_MAP = {
+    "oral": "oral",
+    "po": "oral",
+    "p.o.": "oral",
+    "p.o": "oral",
+    "by mouth": "oral",
+    "mouth": "oral",
+    "per os": "oral",
+    "iv": "iv",
+    "i.v.": "iv",
+    "i.v": "iv",
+    "intravenous": "iv",
+    "im": "im",
+    "i.m.": "im",
+    "i.m": "im",
+    "intramuscular": "im",
+    "sc": "subcutaneous",
+    "sq": "subcutaneous",
+    "subcut": "subcutaneous",
+    "subcutaneous": "subcutaneous",
+    "sub-q": "subcutaneous",
+    "topical": "topical",
+    "local": "topical",
+    "inhalation": "inhalation",
+    "inh": "inhalation",
+    "nasal": "nasal",
+    "sublingual": "sublingual",
+    "sl": "sublingual",
+    "s.l.": "sublingual",
+    "ophthalmic": "ophthalmic",
+    "rectal": "rectal",
+    "pr": "rectal",
+}
+
+
+def normalize_route(route_str: Optional[str]) -> Optional[str]:
+    """Normalizes medication route to canonical form (oral, iv, im, subcutaneous, etc.)"""
+    if not route_str:
+        return None
+    clean = route_str.strip().lower()
+    return ROUTE_MAP.get(clean, clean)
+
+
+def normalize_drug_name_with_brand(raw_name: str) -> Tuple[str, str, Optional[str]]:
+    """Returns (canonical_name, raw_name, brand_name)"""
     clean = raw_name.strip().lower()
+    # Strip common formulation prefixes (tab, cap, injection, etc.)
+    clean = re.sub(r"\b(tab|tablet|tablets|cap|capsule|capsules|syrup|inj|injection|suspension|cream|ointment|gel|patch)\b", "", clean).strip()
+    # Strip strength / dosage strings if embedded (e.g. 500mg, 500 mg, 10ml, 0.5g)
+    clean = re.sub(r"\b\d+\.?\d*\s*(mg|g|mcg|ml|iu|units)\b", "", clean).strip()
     # Strip salt qualifiers
-    clean = re.sub(r"\b(hcl|hydrochloride|sodium|potassium|maleate|succinate)\b", "", clean).strip()
-    canonical = BRAND_TO_GENERIC.get(clean, clean)
-    return canonical, raw_name.strip()
+    clean = re.sub(r"\b(hcl|hydrochloride|sodium|potassium|maleate|succinate|tartrate|mesylate|fumarate|calcium)\b", "", clean).strip()
+    # Strip non-alphanumeric punctuation except hyphen
+    clean = re.sub(r"[^\w\s-]", " ", clean)
+    clean = re.sub(r"\s+", " ", clean).strip()
+
+    brand_name = None
+    if clean in BRAND_TO_GENERIC:
+        brand_name = clean.title()
+        canonical = BRAND_TO_GENERIC[clean]
+    else:
+        # Check if any brand word is part of clean
+        found = False
+        for b, g in BRAND_TO_GENERIC.items():
+            if b == clean or f" {b} " in f" {clean} " or clean.startswith(f"{b} ") or clean.endswith(f" {b}"):
+                brand_name = b.title()
+                canonical = g
+                found = True
+                break
+        if not found:
+            canonical = clean if clean else raw_name.strip().lower()
+
+    return canonical, raw_name.strip(), brand_name
+
+
+def normalize_drug_name(raw_name: str) -> Tuple[str, str]:
+    """Returns (canonical_name, raw_name) for backward compatibility"""
+    canonical, raw, _ = normalize_drug_name_with_brand(raw_name)
+    return canonical, raw
 
 
 def normalize_frequency(freq_text: Optional[str]) -> Tuple[str, str]:

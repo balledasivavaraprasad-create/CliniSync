@@ -4,17 +4,34 @@ from pydantic import BaseModel, Field, model_validator
 class BriefPatient(BaseModel):
     id: str
     name: str
-    age: int
+    age: Optional[int] = None
+    age_display: Optional[str] = None
+    semantic_state: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def set_age_display(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            age = data.get("age")
+            if not data.get("age_display"):
+                data["age_display"] = f"{age} y" if age is not None else "Not available"
+            if not data.get("semantic_state"):
+                data["semantic_state"] = "DOCUMENTED" if age is not None else "MISSING"
+        return data
 
 class BriefChiefComplaint(BaseModel):
     text: str
     evidence_ids: List[str] = []
     confidence_band: str = "high"
+    verification_status: Optional[str] = None
+    semantic_state: Optional[str] = None
 
 class BriefHistoryItem(BaseModel):
     text: str
     evidence_ids: List[str] = []
     confidence_band: str = "high"
+    verification_status: Optional[str] = None
+    semantic_state: Optional[str] = None
 
 class BriefMedicationItem(BaseModel):
     name: str
@@ -25,11 +42,16 @@ class BriefMedicationItem(BaseModel):
     evidence_ids: List[str] = []
     confidence_band: str = "high"
     conflict_flag: bool = False
+    verification_status: Optional[str] = None
+    semantic_state: Optional[str] = None
+    dose_semantic_state: Optional[str] = None
 
 class BriefAllergyItem(BaseModel):
     text: str
     evidence_ids: List[str] = []
     status: str = "documented"  # documented | not_documented
+    verification_status: Optional[str] = None
+    semantic_state: Optional[str] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -47,6 +69,8 @@ class BriefInvestigationItem(BaseModel):
     date: str = ""
     abnormal: str = ""
     evidence_ids: List[str] = []
+    verification_status: Optional[str] = None
+    semantic_state: Optional[str] = None
 
 class BriefTrendItem(BaseModel):
     test: str
@@ -54,20 +78,24 @@ class BriefTrendItem(BaseModel):
     direction: str = "stable"  # up | down | stable | mixed
     description: str = ""
     evidence_ids: List[str] = []
+    semantic_state: Optional[str] = "DOCUMENTED"
 
 class BriefAttentionItem(BaseModel):
     text: str
     severity: str = "medium"  # low | medium | high
     evidence_ids: List[str] = []
+    semantic_state: Optional[str] = "DOCUMENTED"
 
 class BriefContradictionItem(BaseModel):
     issue_id: str
     text: str
     sources: List[str] = []
+    semantic_state: Optional[str] = "CONFLICTING"
 
 class BriefMissingInfoItem(BaseModel):
     prompt: str
     reason: str
+    semantic_state: Optional[str] = "MISSING"
 
     @model_validator(mode="before")
     @classmethod
@@ -83,7 +111,7 @@ class BriefEvidenceShortcut(BaseModel):
     evidence_id: str
     label: str
     document_id: str
-    page: int
+    page: Optional[int] = None
 
 class DoctorBrief(BaseModel):
     patient: BriefPatient

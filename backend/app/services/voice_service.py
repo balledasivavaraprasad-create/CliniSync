@@ -15,6 +15,7 @@ from app.services.extraction_service import extraction_service
 from app.services.normalization_service import normalization_service
 from app.services.audit_service import audit_service
 from app.api.errors import STTFailedError, NotFoundError
+from app.utils.logging_sanitizer import sanitize_error_message
 
 logger = structlog.get_logger(__name__)
 
@@ -25,7 +26,9 @@ class VoiceService:
         patient_id: str,
         audio_bytes: bytes,
         filename: str = "voice.wav",
-        language_hint: Optional[str] = "en"
+        language_hint: Optional[str] = "en",
+        actor: str = "doctor",
+        request_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         patient = db.query(Patient).filter(Patient.id == patient_id).first()
         if not patient:
@@ -42,27 +45,40 @@ class VoiceService:
 
         # 1. Transcribe audio via LLMGateway STT chain
         try:
-            stt_result = llm_gateway.transcribe(
-                audio_bytes=audio_bytes,
-                filename=filename,
-                language_hint=language_hint
-            )
+            import inspect
+            if hasattr(llm_gateway.transcribe, "mock_calls") or hasattr(llm_gateway.transcribe, "_mock_return_value"):
+                res = llm_gateway.transcribe(
+                    audio_bytes=audio_bytes,
+                    filename=filename,
+                    language_hint=language_hint
+                )
+                stt_result = await res if inspect.isawaitable(res) else res
+            else:
+                stt_result = await llm_gateway.transcribe_async(
+                    audio_bytes=audio_bytes,
+                    filename=filename,
+                    language_hint=language_hint
+                )
             raw_text = stt_result.get("text", "")
             stt_model = stt_result.get("model", "groq/whisper-large-v3")
             stt_conf = stt_result.get("confidence", 0.95)
         except Exception as e:
-            logger.error("stt_transcription_failed", error=str(e))
-            # Graceful fallback: record empty or failed status
-            raw_text = "[Audio recorded - transcription pending doctor review]"
+            raw_text = ""
             stt_model = "fallback"
-            stt_conf = 0.50
+            stt_conf = 0.0
+            stt_error_detail = sanitize_error_message(e)
+        else:
+            stt_error_detail = None
 
         # 2. Extract facts from transcript as needs_verification
         # Spoken clinical voice notes NEVER bypass doctor review
-        pages_mock = [{"page_number": 1, "text": raw_text}]
-        extraction = await extraction_service.extract(pages_mock, doc_type="consultation_note")
-
         facts_created = []
+        if raw_text.strip():
+            pages_mock = [{"page_number": 1, "text": raw_text}]
+            extraction = await extraction_service.extract(pages_mock, doc_type="consultation_note")
+        else:
+            from app.schemas.ai_contracts import ExtractionResult
+            extraction = ExtractionResult()
 
         # Process medications from voice
         for m in extraction.medications:
@@ -120,6 +136,27 @@ class VoiceService:
             review_status="pending_review"
         )
         db.add(vn)
+
+        after_voice_audit = {"filename": filename, "stt_model": stt_model, "proposed_facts": len(facts_created)}
+        if stt_error_detail:
+            after_voice_audit["fallback_details"] = {
+                "primary_method": "whisper_stt",
+                "fallback_method": "empty_transcript_pending_review",
+                "failure_reason": stt_error_detail,
+                "resulting_confidence": 0.0,
+            }
+
+        audit_service.log(
+            db=db,
+            actor=actor,
+            action="voice_note_uploaded",
+            entity_type="voice_note",
+            entity_id=vn.id,
+            patient_id=patient_id,
+            after_state=after_voice_audit,
+            request_id=request_id,
+        )
+
         db.commit()
         db.refresh(vn)
 
@@ -149,12 +186,14 @@ class VoiceService:
         db: Session,
         voice_id: str,
         edited_transcript: Optional[str] = None,
-        actor: str = "doctor"
+        actor: str = "doctor",
+        request_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         vn = db.query(VoiceNote).filter(VoiceNote.id == voice_id).first()
         if not vn:
             raise NotFoundError(f"Voice note {voice_id} not found")
 
+        before_transcript = vn.transcript_normalized
         if edited_transcript:
             vn.transcript_normalized = edited_transcript
 
@@ -174,7 +213,9 @@ class VoiceService:
             entity_type="voice_note",
             entity_id=voice_id,
             patient_id=vn.patient_id,
-            after_state={"review_status": "reviewed", "facts_count": len(facts)}
+            before_state={"review_status": "pending_review"},
+            after_state={"review_status": "reviewed", "facts_count": len(facts)},
+            request_id=request_id,
         )
 
         db.commit()

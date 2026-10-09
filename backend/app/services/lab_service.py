@@ -37,7 +37,9 @@ class LabService:
                     "observed_date": i.observed_date.isoformat() if i.observed_date else None,
                     "confidence": i.confidence,
                     "source_document_id": i.source_document_id,
-                    "group_key": i.group_key
+                    "group_key": i.group_key,
+                    "semantic_state": i.semantic_state,
+                    "status": i.status
                 })
         return latest
 

@@ -7,12 +7,35 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class CheckEmailRequest(BaseModel):
+    email: str
+
+
+class SendOtpRequest(BaseModel):
+    email: str
+    role: Optional[str] = "patient"
+    action: Optional[str] = "register"
+
+
+class VerifyOtpRequest(BaseModel):
+    email: str
+    otp: str
+
+
 class RegisterRequest(BaseModel):
     email: str
     password: str
     full_name: str
+    role: Optional[str] = "doctor"
+    specialty: Optional[str] = "General Medicine"
+
+
+class AdminCreateUserRequest(BaseModel):
+    email: str
+    password: str
+    full_name: str
     role: str = "doctor"
-    specialty: str = "Cardiology"
+    specialty: str = "General Medicine"
 
 
 class UserResponse(BaseModel):
@@ -23,6 +46,7 @@ class UserResponse(BaseModel):
     specialty: str
     is_active: bool = True
     avatar_url: Optional[str] = None
+    patient_id: Optional[str] = None
 
 
 class LoginResponse(BaseModel):

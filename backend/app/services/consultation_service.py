@@ -24,6 +24,7 @@ from app.api.errors import (
     Gate1BlockedError,
     InvalidStateTransitionError,
     NotFoundError,
+    ForbiddenError,
     ValidationUnavailableError,
 )
 
@@ -41,15 +42,75 @@ class ConsultationService:
         patient_id: str,
         specialty: str = "general_medicine",
         brief_id: Optional[str] = None,
-        actor: str = "ai"
+        actor: str = "ai",
+        request_id: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
     ) -> Tuple[Consultation, ConsultationVersion]:
         patient = db.query(Patient).filter(Patient.id == patient_id).first()
         if not patient:
             raise NotFoundError(f"Patient {patient_id} not found")
 
+        # Verify brief ownership if brief_id is provided (prevent cross-patient parameter substitution)
+        if brief_id:
+            from app.models.brief import Brief
+            brief_row = db.query(Brief).filter(Brief.id == brief_id).first()
+            if not brief_row:
+                raise NotFoundError(f"Brief {brief_id} not found")
+            if brief_row.patient_id != patient_id:
+                raise ForbiddenError(f"Brief {brief_id} belongs to patient {brief_row.patient_id}, not {patient_id}")
+
+        # Deduplication 1: If brief_id is provided, return existing active draft for that brief
+        if brief_id:
+            existing_cns = (
+                db.query(Consultation)
+                .filter(
+                    Consultation.patient_id == patient_id,
+                    Consultation.brief_id == brief_id,
+                    Consultation.status.in_(["draft", "in_review"]),
+                )
+                .order_by(desc(Consultation.created_at))
+                .first()
+            )
+            if existing_cns:
+                ver = db.query(ConsultationVersion).filter(
+                    ConsultationVersion.id == existing_cns.current_version_id
+                ).first()
+                if ver:
+                    logger.info("returning_existing_consultation_draft_for_brief", cid=existing_cns.id, brief_id=brief_id)
+                    return existing_cns, ver
+
+        # Deduplication 2: If explicit idempotency_key matches an existing consultation_created audit record for this patient
+        if idempotency_key:
+            from app.models.audit_log import AuditLog
+            audit_rec = (
+                db.query(AuditLog)
+                .filter(
+                    AuditLog.patient_id == patient_id,
+                    AuditLog.action == "consultation_created",
+                    AuditLog.request_id == idempotency_key,
+                )
+                .first()
+            )
+            if audit_rec:
+                existing_cns = db.query(Consultation).filter(
+                    Consultation.id == audit_rec.entity_id,
+                    Consultation.patient_id == patient_id,
+                ).first()
+                if existing_cns:
+                    ver = db.query(ConsultationVersion).filter(
+                        ConsultationVersion.id == existing_cns.current_version_id
+                    ).first()
+                    if ver:
+                        logger.info("returning_idempotent_consultation_draft", cid=existing_cns.id, key=idempotency_key)
+                        return existing_cns, ver
+
         facts = db.query(ClinicalFact).filter(ClinicalFact.patient_id == patient_id).all()
         meds = db.query(Medication).filter(Medication.patient_id == patient_id).all()
         invs = db.query(Investigation).filter(Investigation.patient_id == patient_id).all()
+        memories = db.query(ClinicalMemory).filter(
+            ClinicalMemory.patient_id == patient_id,
+            ClinicalMemory.verified == True,
+        ).order_by(desc(ClinicalMemory.created_at)).all()
 
         # Build clean initial content directly derived from records
         # AI MUST NEVER draft assessment/plan/examination
@@ -58,11 +119,41 @@ class ConsultationService:
         hpi = ", ".join([f.value for f in facts if f.fact_type == "symptom"][:3]) or "No active acute symptoms documented."
         past_hx = "; ".join([f.value for f in diag_facts[:4]])
 
+        # Incorporate approved memory summaries into past history if available
+        retrieved_memories_data: List[Dict[str, Any]] = []
+        memory_hx_additions: List[str] = []
+        for mem in memories:
+            m_dict = json.loads(mem.content_json) if mem.content_json else {}
+            retrieved_memories_data.append({
+                "id": mem.id,
+                "memory_type": mem.memory_type,
+                "content": m_dict,
+                "source_consultation_id": mem.source_consultation_id,
+                "source_version_id": mem.source_version_id,
+                "verified": mem.verified,
+                "created_at": mem.created_at.isoformat() if mem.created_at else None,
+            })
+            for k in ("diagnosis", "assessment", "plan", "plan_note"):
+                if m_dict.get(k):
+                    val = m_dict[k]
+                    summary_text = f"Approved {mem.memory_type}: {val}"
+                    if summary_text not in memory_hx_additions:
+                        memory_hx_additions.append(summary_text)
+
+        if memory_hx_additions:
+            combined_hx = [past_hx] if past_hx else []
+            combined_hx.extend(memory_hx_additions[:3])
+            past_hx = "; ".join([h for h in combined_hx if h])
+
         cur_meds = [{"name": m.canonical_name.title(), "dose": m.dose_text or f"{m.strength_value or ''}{m.strength_unit or ''}".strip(), "freq": m.frequency_code, "fact_id": m.fact_id} for m in meds]
         allergies = [{"text": f.value, "fact_id": f.id} for f in facts if f.fact_type == "allergy"]
         invs_reviewed = [{"test": i.test_name_canonical, "val": str(i.value_numeric or i.value_text), "unit": i.unit, "fact_id": i.fact_id} for i in invs[:8]]
 
         evidence_ids = [f.id for f in facts[:20]]
+
+        flags_list = [ConsultationFlag(text="Initial consultation draft generated from source records. Complete assessment and plan before approval.", by="ai")]
+        if memories:
+            flags_list.append(ConsultationFlag(text=f"Retrieved {len(memories)} approved clinical memory item(s) from previous consultation records.", by="system"))
 
         content = ConsultationContent(
             chief_complaint=cc,
@@ -75,8 +166,9 @@ class ConsultationService:
             assessment="",   # Empty for clinician
             plan="",         # Empty for clinician
             follow_up="",    # Empty for clinician
-            flags=[ConsultationFlag(text="Initial consultation draft generated from source records. Complete assessment and plan before approval.", by="ai")],
-            evidence_ids=evidence_ids
+            flags=flags_list,
+            evidence_ids=evidence_ids,
+            verified_memories=retrieved_memories_data,
         )
 
         cns_id = consultation_id()
@@ -103,6 +195,19 @@ class ConsultationService:
             edited_by=actor
         )
         db.add(ver)
+
+        from app.services.audit_service import audit_service
+        audit_service.log(
+            db=db,
+            actor=actor,
+            action="consultation_created",
+            entity_type="consultation",
+            entity_id=cns_id,
+            patient_id=patient_id,
+            after_state={"specialty": specialty, "version_id": ver_id, "origin": ver.origin},
+            request_id=idempotency_key or request_id,
+        )
+
         db.commit()
         db.refresh(cns)
         db.refresh(ver)
@@ -125,22 +230,60 @@ class ConsultationService:
         db: Session,
         cid: str,
         content: Dict[str, Any],
-        actor: str = "doctor"
+        actor: str = "doctor",
+        expected_version_id: Optional[str] = None,
+        request_id: Optional[str] = None,
     ) -> ConsultationVersion:
         cns = db.query(Consultation).filter(Consultation.id == cid).first()
         if not cns:
             raise NotFoundError(f"Consultation {cid} not found")
         if cns.status == "approved":
             raise InvalidStateTransitionError("Approved consultations are immutable and cannot be edited.")
+        if expected_version_id and cns.current_version_id != expected_version_id:
+            raise InvalidStateTransitionError(
+                f"Stale consultation version: client was on {expected_version_id}, but current version is {cns.current_version_id}."
+            )
 
         current_ver = db.query(ConsultationVersion).filter(ConsultationVersion.id == cns.current_version_id).first()
         if not current_ver:
             raise NotFoundError("Current consultation version not found")
 
-        current_ver.content_json = json.dumps(content)
-        current_ver.edited_by = actor
+        # Preserve the original AI-generated version (v1) even after doctor edits!
+        if current_ver.origin == ConsultationOrigin.ai_generated.value:
+            latest_ver = db.query(ConsultationVersion).filter(ConsultationVersion.consultation_id == cid).order_by(desc(ConsultationVersion.version_number)).first()
+            next_ver_num = (latest_ver.version_number + 1) if latest_ver else 2
+            new_ver = ConsultationVersion(
+                id=version_id(),
+                consultation_id=cid,
+                version_number=next_ver_num,
+                origin=ConsultationOrigin.doctor_edited.value,
+                content_json=json.dumps(content),
+                change_summary=f"Doctor updated draft ({actor})",
+                edited_by=actor
+            )
+            db.add(new_ver)
+            cns.current_version_id = new_ver.id
+            current_ver = new_ver
+        else:
+            current_ver.content_json = json.dumps(content)
+            current_ver.origin = ConsultationOrigin.doctor_edited.value
+            current_ver.edited_by = actor
+            current_ver.change_summary = f"Doctor updated draft ({actor})"
+
         if cns.status == "draft":
             cns.status = "in_review"
+
+        from app.services.audit_service import audit_service
+        audit_service.log(
+            db=db,
+            actor=actor,
+            action="consultation_draft_updated",
+            entity_type="consultation",
+            entity_id=cid,
+            patient_id=cns.patient_id,
+            after_state={"version_id": current_ver.id, "version_number": current_ver.version_number},
+            request_id=request_id,
+        )
 
         db.commit()
         db.refresh(current_ver)
@@ -152,13 +295,19 @@ class ConsultationService:
         cid: str,
         content: Dict[str, Any],
         change_summary: Optional[str] = None,
-        actor: str = "doctor"
+        actor: str = "doctor",
+        expected_version_id: Optional[str] = None,
+        request_id: Optional[str] = None,
     ) -> ConsultationVersion:
         cns = db.query(Consultation).filter(Consultation.id == cid).first()
         if not cns:
             raise NotFoundError(f"Consultation {cid} not found")
         if cns.status == "approved":
             raise InvalidStateTransitionError("Approved consultations are immutable.")
+        if expected_version_id and cns.current_version_id != expected_version_id:
+            raise InvalidStateTransitionError(
+                f"Stale consultation version: client was on {expected_version_id}, but current version is {cns.current_version_id}."
+            )
 
         # Determine next version number
         latest_ver = db.query(ConsultationVersion).filter(ConsultationVersion.consultation_id == cid).order_by(desc(ConsultationVersion.version_number)).first()
@@ -177,6 +326,18 @@ class ConsultationService:
         db.add(new_ver)
         cns.current_version_id = new_ver_id
         cns.status = "in_review"
+
+        from app.services.audit_service import audit_service
+        audit_service.log(
+            db=db,
+            actor=actor,
+            action="consultation_version_created",
+            entity_type="consultation_version",
+            entity_id=new_ver_id,
+            patient_id=cns.patient_id,
+            after_state={"consultation_id": cid, "version_number": next_ver_num, "change_summary": new_ver.change_summary},
+            request_id=request_id,
+        )
 
         db.commit()
         db.refresh(new_ver)
@@ -234,12 +395,34 @@ class ConsultationService:
         db: Session,
         cid: str,
         acknowledged_unedited: bool = False,
-        approved_by: str = "doctor"
+        approved_by: str = "doctor",
+        expected_version_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Runs Gate 1. On pass, writes verified clinical_memory and timeline approved_note in ONE transaction.
         Enforces INV-1, INV-8, INV-9.
         """
+        cns = None
+        if db is not None:
+            cns = db.query(Consultation).filter(Consultation.id == cid).first()
+            if not cns:
+                raise NotFoundError(f"Consultation {cid} not found")
+            if cns.status == "approved":
+                raise InvalidStateTransitionError("Consultation has already been approved.")
+            if expected_version_id and cns.current_version_id != expected_version_id:
+                prior_ver = db.query(ConsultationVersion).filter(ConsultationVersion.id == expected_version_id).first()
+                curr_ver = db.query(ConsultationVersion).filter(ConsultationVersion.id == cns.current_version_id).first()
+                is_valid_prior = (
+                    prior_ver
+                    and curr_ver
+                    and prior_ver.consultation_id == cid
+                    and prior_ver.version_number == curr_ver.version_number - 1
+                )
+                if not is_valid_prior:
+                    raise InvalidStateTransitionError(
+                        f"Stale consultation version: client was on {expected_version_id}, but current version is {cns.current_version_id}."
+                    )
+
         outcome, checks, rep_id = gate1_validator.validate_approval(
             db=db,
             consultation_id=cid,
@@ -266,72 +449,107 @@ class ConsultationService:
                 )
             raise Gate1BlockedError(f"Gate 1 blocked approval: {'; '.join(reasons)}")
 
-        cns, ver = self.get_consultation(db, cid)
+        ver = db.query(ConsultationVersion).filter(ConsultationVersion.id == cns.current_version_id).first()
+        if not ver:
+            raise NotFoundError(f"Current version '{cns.current_version_id}' not found")
         content = json.loads(ver.content_json) if (ver and ver.content_json) else {}
         patient_id = cns.patient_id
         now_dt = datetime.now(timezone.utc)
+        import hashlib
+        content_hash = hashlib.sha256(ver.content_json.encode("utf-8")).hexdigest()
 
-        # 1. Create verified clinical_memory items (Append-only)
+        prov_data = {
+            "doctor_id": approved_by,
+            "consultation_id": cid,
+            "version_id": ver.id,
+            "approval_timestamp": now_dt.isoformat(),
+            "content_hash": content_hash,
+            "approved_by": approved_by,
+            "specialty": cns.specialty,
+            "evidence_ids": content.get("evidence_ids", [])
+        }
+
+        # 1. Create verified clinical_memory items (Append-only & Versioned)
+        from app.services.memory_service import memory_service
         created_memory = []
 
         # Memory candidate: Diagnoses / Chief Complaint
         if content.get("chief_complaint"):
-            mem_diag = ClinicalMemory(
-                id=memory_id(),
+            mem_diag = memory_service.record_approved_memory(
+                db=db,
                 patient_id=patient_id,
                 memory_type="diagnosis",
-                content_json=json.dumps({"diagnosis": content["chief_complaint"]}),
+                content={
+                    "diagnosis": content["chief_complaint"],
+                    "semantic_state": "DOCUMENTED",
+                    "status": "DOCUMENTED",
+                },
                 source_consultation_id=cid,
                 source_version_id=ver.id,
-                verified=True,
-                validation_report_id=rep_id
+                validation_report_id=rep_id,
+                approving_actor=approved_by,
+                provenance=prov_data
             )
-            db.add(mem_diag)
             created_memory.append(mem_diag)
 
         # Memory candidate: Assessment & Plan
         if content.get("assessment"):
-            mem_assess = ClinicalMemory(
-                id=memory_id(),
+            mem_assess = memory_service.record_approved_memory(
+                db=db,
                 patient_id=patient_id,
                 memory_type="assessment",
-                content_json=json.dumps({"assessment": content["assessment"]}),
+                content={
+                    "assessment": content["assessment"],
+                    "semantic_state": "DOCUMENTED",
+                    "status": "DOCUMENTED",
+                },
                 source_consultation_id=cid,
                 source_version_id=ver.id,
-                verified=True,
-                validation_report_id=rep_id
+                validation_report_id=rep_id,
+                approving_actor=approved_by,
+                provenance=prov_data
             )
-            db.add(mem_assess)
             created_memory.append(mem_assess)
 
         if content.get("plan"):
-            mem_plan = ClinicalMemory(
-                id=memory_id(),
+            mem_plan = memory_service.record_approved_memory(
+                db=db,
                 patient_id=patient_id,
                 memory_type="plan_note",
-                content_json=json.dumps({"plan": content["plan"]}),
+                content={
+                    "plan": content["plan"],
+                    "semantic_state": "DOCUMENTED",
+                    "status": "DOCUMENTED",
+                },
                 source_consultation_id=cid,
                 source_version_id=ver.id,
-                verified=True,
-                validation_report_id=rep_id
+                validation_report_id=rep_id,
+                approving_actor=approved_by,
+                provenance=prov_data
             )
-            db.add(mem_plan)
             created_memory.append(mem_plan)
 
-        # 2. Add approved_note to timeline
-        evt = TimelineEvent(
-            id=timeline_event_id(),
-            patient_id=patient_id,
-            event_type="approved_note",
-            event_date=now_dt,
-            date_precision="day",
-            title=f"Approved Consultation ({cns.specialty.title()})",
-            summary=f"Consultation finalized by {approved_by}. Assessment: {content.get('assessment', 'N/A')[:60]}",
-            related_fact_ids=json.dumps(content.get("evidence_ids", [])),
-            source_document_id=None,
-            sort_key=now_dt.isoformat()
-        )
-        db.add(evt)
+        # 2. Add approved_note to timeline if not already present
+        existing_evt = db.query(TimelineEvent).filter(
+            TimelineEvent.patient_id == patient_id,
+            TimelineEvent.event_type == "approved_note",
+            TimelineEvent.title == f"Approved Consultation ({cns.specialty.title()})",
+            TimelineEvent.summary.like(f"Consultation finalized by {approved_by}%"),
+        ).first()
+        if not existing_evt:
+            evt = TimelineEvent(
+                id=timeline_event_id(),
+                patient_id=patient_id,
+                event_type="approved_note",
+                event_date=now_dt,
+                date_precision="day",
+                title=f"Approved Consultation ({cns.specialty.title()})",
+                summary=f"Consultation finalized by {approved_by}. Assessment: {content.get('assessment', 'N/A')[:60]}",
+                related_fact_ids=json.dumps(content.get("evidence_ids", [])),
+                source_document_id=None,
+                sort_key=now_dt.isoformat()
+            )
+            db.add(evt)
 
         # 3. Lock consultation
         cns.status = "approved"
@@ -351,7 +569,15 @@ class ConsultationService:
             entity_type="consultation",
             entity_id=cid,
             patient_id=patient_id,
-            after_state={"memory_items_added": len(created_memory), "report_id": rep_id}
+            after_state={
+                "doctor_id": approved_by,
+                "consultation_id": cid,
+                "version_id": ver.id,
+                "approval_timestamp": now_dt.isoformat(),
+                "content_hash": content_hash,
+                "memory_items_added": len(created_memory),
+                "report_id": rep_id
+            }
         )
 
         db.commit()
@@ -359,6 +585,10 @@ class ConsultationService:
 
         return {
             "consultation_id": cns.id,
+            "version_id": ver.id,
+            "doctor_id": approved_by,
+            "approval_timestamp": now_dt.isoformat(),
+            "content_hash": content_hash,
             "status": "approved",
             "approved_at": cns.approved_at.isoformat(),
             "approved_by": cns.approved_by,

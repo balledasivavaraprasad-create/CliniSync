@@ -19,12 +19,19 @@ connect_args: dict = (
     {"check_same_thread": False, "timeout": 30} if _is_sqlite else {}
 )
 
-engine = create_engine(
-    settings.DATABASE_URL,
-    connect_args=connect_args,
-    echo=(settings.LOG_LEVEL == "DEBUG"),
-    pool_pre_ping=True,
-)
+engine_kwargs: dict = {
+    "connect_args": connect_args,
+    "echo": (settings.LOG_LEVEL == "DEBUG"),
+    "pool_pre_ping": True,
+}
+if not _is_sqlite:
+    engine_kwargs.update({
+        "pool_size": getattr(settings, "DB_POOL_SIZE", 10),
+        "max_overflow": getattr(settings, "DB_MAX_OVERFLOW", 20),
+        "pool_timeout": getattr(settings, "DB_POOL_TIMEOUT", 30),
+    })
+
+engine = create_engine(settings.DATABASE_URL, **engine_kwargs)
 
 if _is_sqlite:
     @event.listens_for(engine, "connect")
@@ -77,56 +84,83 @@ def ensure_default_users(session: Session) -> None:
     from app.models.user import User
     from app.utils.hashing import hash_password
 
+    if settings.APP_ENV != "development":
+        logger.info("ensure_default_users_skipped_in_non_dev_environment")
+        return
+
     try:
-        if session.query(User.id).first() is None:
-            demo_users = [
-                User(
-                    id="usr_doctor_001",
-                    email="doctor@clinsync.health",
-                    full_name="Dr. Willie Carter, MD",
-                    role="doctor",
-                    specialty="General Medicine",
-                    hashed_password=hash_password("demo1234"),
-                    is_active=True,
-                ),
-                User(
-                    id="usr_doctor_002",
-                    email="sarah.jenkins@clinsync.health",
-                    full_name="Dr. Sarah Jenkins, MD",
-                    role="doctor",
-                    specialty="Cardiology",
-                    hashed_password=hash_password("demo1234"),
-                    is_active=True,
-                ),
-                User(
-                    id="usr_doctor_003",
-                    email="demo@clinsync.health",
-                    full_name="Dr. Alex Mercer, MD",
-                    role="doctor",
-                    specialty="Internal Medicine",
-                    hashed_password=hash_password("demo1234"),
-                    is_active=True,
-                ),
-            ]
-            session.add_all(demo_users)
-            session.commit()
+        presets = [
+            ("usr_doctor_001", "doctor@clinsync.health", "Dr. Willie Carter, MD", "doctor", "General Medicine", "Doc@ClinSync2026!"),
+            ("usr_doctor_002", "sarah.jenkins@clinsync.health", "Dr. Sarah Jenkins, MD", "doctor", "Cardiology", "Cardio@Sync2026!"),
+            ("usr_doctor_003", "demo@clinsync.health", "Dr. Alex Mercer, MD", "doctor", "Internal Medicine", "Internal@Med2026!"),
+            ("usr_patient_001", "patient@clinsync.health", "Willie Baker", "patient", "General", "Patient@Sync2026!"),
+            ("usr_patient_002", "jane.doe@clinsync.health", "Jane Doe", "patient", "Cardiac Care", "Healthy@Life2026!"),
+        ]
+        for uid, email, name, role, spec, pwd in presets:
+            existing = session.query(User).filter(User.email == email).first()
+            if not existing:
+                session.add(
+                    User(
+                        id=uid,
+                        email=email,
+                        full_name=name,
+                        role=role,
+                        specialty=spec,
+                        hashed_password=hash_password(pwd),
+                        is_active=True,
+                    )
+                )
+        session.commit()
     except Exception as exc:
         session.rollback()
         logger.warning("ensure_default_users_skipped", error=str(exc))
 
 
-def ensure_schema() -> bool:
-    """Create any missing tables. Additive only — never drops or alters.
+def run_alembic_migrations() -> bool:
+    """Run Alembic migrations programmatically to head, stamping baseline if legacy db."""
+    try:
+        from pathlib import Path
+        from alembic.config import Config
+        from alembic import command
 
-    There is no migration tool in this project, so a fresh clone has no tables
-    at all and every endpoint 500s on `no such table`. Importing the model
-    modules registers them on `Base.metadata`, and `create_all(checkfirst=True)`
-    only issues `CREATE TABLE` for what is absent. Returns True when the schema
-    is complete afterwards.
+        backend_dir = Path(__file__).resolve().parent.parent.parent
+        ini_candidates = [
+            backend_dir / "alembic.ini",
+            backend_dir.parent / "alembic.ini",
+        ]
+        ini_path = next((p for p in ini_candidates if p.exists()), None)
+        if not ini_path:
+            return False
+
+        alembic_cfg = Config(str(ini_path))
+        alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+
+        inspector = inspect(engine)
+        existing_tables = inspector.get_table_names()
+
+        # If existing database has data tables but no alembic_version, stamp baseline first
+        if "alembic_version" not in existing_tables and "patients" in existing_tables:
+            logger.info("stamping_baseline_alembic_version_for_existing_database")
+            command.stamp(alembic_cfg, "4c1d44f6a4e8")
+
+        command.upgrade(alembic_cfg, "head")
+        return True
+    except Exception as exc:
+        logger.warning("alembic_migration_attempt_fallback", error=str(exc))
+        return False
+
+
+def ensure_schema() -> bool:
+    """Ensure database schema is complete and migrated to head. Additive only.
+
+    Applies Alembic migrations to head. If migrations cannot run or tables are missing,
+    safely falls back to Base.metadata.create_all(checkfirst=True). Returns True when
+    schema is complete.
     """
     from app import models  # noqa: F401  — registers every table on Base
 
     try:
+        run_alembic_migrations()
         Base.metadata.create_all(bind=engine, checkfirst=True)
         with SessionLocal() as session:
             ensure_default_users(session)

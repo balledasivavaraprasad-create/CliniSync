@@ -40,6 +40,20 @@ class PatientService:
             after={"full_name": patient.full_name},
             request_id=request_id,
         )
+
+        # Assign creator explicit patient access
+        from app.models.patient_access import PatientAccess, patient_access_id
+        from app.models.user import User
+        if actor and actor not in ("system", "doctor"):
+            if db.query(User.id).filter(User.id == actor).first() is not None:
+                pa = PatientAccess(
+                    id=patient_access_id(),
+                    patient_id=patient.id,
+                    user_id=actor,
+                    access_level="primary_doctor",
+                )
+                db.add(pa)
+
         db.commit()
         db.refresh(patient)
         return patient
@@ -65,8 +79,11 @@ class PatientService:
         query: Optional[str] = None,
         limit: int = 50,
         offset: int = 0,
+        accessible_ids: Optional[set] = None,
     ) -> List[Patient]:
         q = db.query(Patient).filter(Patient.deleted_at.is_(None))
+        if accessible_ids is not None:
+            q = q.filter(Patient.id.in_(accessible_ids))
         if query:
             q = q.filter(Patient.full_name.ilike(f"%{query.strip()}%"))
         return q.order_by(Patient.last_activity_at.desc()).offset(offset).limit(limit).all()

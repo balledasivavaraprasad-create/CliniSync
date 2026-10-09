@@ -63,6 +63,8 @@ class TimelineService:
                 "related_fact_ids": fact_ids,
                 "source_document_id": e.source_document_id,
                 "sort_key": e.sort_key,
+                "semantic_state": e.semantic_state,
+                "status": e.status,
                 "created_at": e.created_at.isoformat() if e.created_at else None,
             })
 

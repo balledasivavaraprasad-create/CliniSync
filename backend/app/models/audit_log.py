@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
 from app.db.database import Base
 from app.models.base import TimestampMixin, utc_now
 from app.utils.ids import audit_id, llm_log_id
@@ -13,7 +13,7 @@ class AuditLog(Base):
     action = Column(String(128), nullable=False)
     entity_type = Column(String(64), nullable=False, index=True)
     entity_id = Column(String(64), nullable=False, index=True)
-    patient_id = Column(String(32), nullable=True, index=True)
+    patient_id = Column(String(32), ForeignKey("patients.id", ondelete="SET NULL"), nullable=True, index=True)
     before_json = Column(Text, nullable=True)
     after_json = Column(Text, nullable=True)
     request_id = Column(String(64), nullable=True)

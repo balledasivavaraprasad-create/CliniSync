@@ -2,7 +2,13 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db_session, get_request_id
+from app.api.deps import (
+    get_db_session,
+    get_request_id,
+    get_current_user,
+    CurrentUser,
+    require_patient_access,
+)
 from app.services.lab_service import lab_service
 
 router = APIRouter(tags=["investigations"])
@@ -11,10 +17,10 @@ router = APIRouter(tags=["investigations"])
 def list_investigations(
     patient_id: str,
     db: Session = Depends(get_db_session),
+    user: CurrentUser = Depends(get_current_user),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import require_patient_id
-    pid = require_patient_id(db, patient_id)
+    pid = require_patient_access(patient_id, db, user)
     invs = lab_service.get_latest_investigations(db=db, patient_id=pid)
     return {
         "success": True,
@@ -27,11 +33,11 @@ def list_investigations(
 def get_all_investigation_trends(
     patient_id: str,
     db: Session = Depends(get_db_session),
+    user: CurrentUser = Depends(get_current_user),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import require_patient_id
     from app.models.investigation import Investigation
-    pid = require_patient_id(db, patient_id)
+    pid = require_patient_access(patient_id, db, user)
     canonical_tests = db.query(Investigation.test_name_canonical).filter(
         Investigation.patient_id == pid
     ).distinct().all()
@@ -64,14 +70,13 @@ def get_investigation_trend(
     patient_id: str,
     group_key: str,
     db: Session = Depends(get_db_session),
+    user: CurrentUser = Depends(get_current_user),
     request_id: str = Depends(get_request_id),
 ):
-    from app.api.deps import require_patient_id
-    pid = require_patient_id(db, patient_id)
+    pid = require_patient_access(patient_id, db, user)
     trend = lab_service.get_investigation_trend(db=db, patient_id=pid, group_key=group_key)
     return {
         "success": True,
         "data": trend,
         "meta": {"request_id": request_id, "source": "db"},
     }
-

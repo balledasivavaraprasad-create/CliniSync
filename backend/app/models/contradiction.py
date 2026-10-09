@@ -1,4 +1,5 @@
-from sqlalchemy import Column, ForeignKey, String, Text
+from sqlalchemy import Column, ForeignKey, String, Text, Index
+from sqlalchemy.orm import relationship
 from app.db.database import Base
 from app.models.base import TimestampMixin
 from app.utils.ids import contradiction_id
@@ -19,3 +20,9 @@ class Contradiction(Base, TimestampMixin):
     status = Column(String(32), default="open", nullable=False, index=True)  # open | acknowledged | resolved_by_doctor | dismissed
     doctor_note = Column(Text, nullable=True)
     detected_run_id = Column(String(64), nullable=True)
+
+    __table_args__ = (
+        Index("ix_contradictions_patient_status", "patient_id", "status"),
+    )
+
+    patient = relationship("Patient", back_populates="contradictions")

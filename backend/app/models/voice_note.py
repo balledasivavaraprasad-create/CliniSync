@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Float, ForeignKey, String, Text
+from sqlalchemy.orm import relationship
 from app.db.database import Base
 from app.models.base import TimestampMixin
 from app.utils.ids import voice_note_id
@@ -18,3 +19,6 @@ class VoiceNote(Base, TimestampMixin):
     language = Column(String(32), default="en", nullable=False)
     status = Column(String(32), default="uploaded", nullable=False)
     review_status = Column(String(32), default="pending_review", nullable=False)  # pending_review | reviewed
+
+    patient = relationship("Patient", back_populates="voice_notes")
+    clinical_facts = relationship("ClinicalFact", back_populates="voice_note")

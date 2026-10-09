@@ -45,7 +45,7 @@ def evaluate_with_judge(
     task: str = "judge_evaluation"
 ) -> Tuple[bool, str, Dict[str, Any]]:
     """
-    Evaluates text for Gate 2 using the validation judge model (Groq primary, Gemini fallback).
+    Evaluates text for Gate 2 synchronously using the validation judge model.
     """
     try:
         verdict = llm_gateway.judge(
@@ -66,12 +66,37 @@ def evaluate_with_judge(
         logger.error("llm_judge_call_failed", error=str(e))
         return False, "judge_unavailable", {"error": str(e)}
 
+async def evaluate_with_judge_async(
+    content_to_judge: str,
+    task: str = "judge_evaluation"
+) -> Tuple[bool, str, Dict[str, Any]]:
+    """
+    Evaluates text for Gate 2 asynchronously without blocking the event loop.
+    """
+    try:
+        verdict = await llm_gateway.judge_async(
+            task=task,
+            content_to_judge=content_to_judge,
+            rubric_prompt=JUDGE_GATE2_RUBRIC
+        )
+        faith = verdict.get("faithfulness", 5.0)
+        non_dir = verdict.get("non_directiveness", 5.0)
+        non_caus = verdict.get("non_causality", 5.0)
+
+        if faith < 4.0 or non_dir < 5.0 or non_caus < 4.0:
+            return False, "block", verdict
+
+        return True, "info", verdict
+    except Exception as e:
+        logger.error("llm_judge_async_call_failed", error=str(e))
+        return False, "judge_unavailable", {"error": str(e)}
+
 def evaluate_gate1_judge(
     content_to_judge: str,
     task: str = "gate1_memory_judge"
 ) -> Tuple[bool, str, Dict[str, Any]]:
     """
-    Evaluates memory candidates for Gate 1 approval.
+    Evaluates memory candidates for Gate 1 approval synchronously.
     """
     try:
         verdict = llm_gateway.judge(
@@ -88,4 +113,28 @@ def evaluate_gate1_judge(
         return True, "info", verdict
     except Exception as e:
         logger.error("llm_gate1_judge_call_failed", error=str(e))
+        return False, "judge_unavailable", {"error": str(e)}
+
+async def evaluate_gate1_judge_async(
+    content_to_judge: str,
+    task: str = "gate1_memory_judge"
+) -> Tuple[bool, str, Dict[str, Any]]:
+    """
+    Evaluates memory candidates for Gate 1 approval asynchronously.
+    """
+    try:
+        verdict = await llm_gateway.judge_async(
+            task=task,
+            content_to_judge=content_to_judge,
+            rubric_prompt=JUDGE_GATE1_RUBRIC
+        )
+        faith = verdict.get("faithfulness", 5.0)
+        no_fab = verdict.get("no_fabricated_facts", 5.0)
+
+        if faith < 4.0 or no_fab < 4.0:
+            return False, "block", verdict
+
+        return True, "info", verdict
+    except Exception as e:
+        logger.error("llm_gate1_judge_async_call_failed", error=str(e))
         return False, "judge_unavailable", {"error": str(e)}

@@ -20,4 +20,5 @@ async def run_patient_recompute(patient_id: str) -> None:
             contradiction_service.recompute(db, patient_id)
             missing_info_service.recompute(db, patient_id)
         except Exception as e:
-            logger.error("error_in_patient_recompute", patient_id=patient_id, error=str(e))
+            from app.utils.logging_sanitizer import sanitize_error_message
+            logger.error("error_in_patient_recompute", patient_id=patient_id, error=sanitize_error_message(e))

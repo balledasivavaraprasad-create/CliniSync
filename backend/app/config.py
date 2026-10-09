@@ -19,17 +19,43 @@ class Settings(BaseSettings):
     CORS_ORIGINS: Union[str, List[str]] = "*"
     DEMO_FALLBACKS_ENABLED: bool = True
 
+    # ── Auth Security
+    JWT_SECRET_KEY: str = Field(default="clinsync-default-insecure-dev-secret-key-change-me", validation_alias="JWT_SECRET_KEY")
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
+    AUTH_DEMO_FALLBACK_ENABLED: bool = True  # Isolated behind explicit flag for dev/tests
+    ALLOW_DEBUG_PHI_LOGGING: bool = False  # Disabled by default: opt-in only for local debugging
+
     # ── Storage / DB
     DATABASE_URL: str = "sqlite:///./clinsync.db"
     STORAGE_ROOT: str = "./storage"
     MAX_UPLOAD_MB: int = 25
     ALLOWED_MIME: str = (
-        "application/pdf,image/jpeg,image/png,image/webp,audio/mpeg,audio/wav,audio/mp4,audio/webm"
+        "application/pdf,image/jpeg,image/png,image/webp,audio/mpeg,audio/wav,audio/mp4,audio/webm,"
+        "text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,"
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation,"
+        "application/msword,application/vnd.ms-powerpoint,application/zip,application/x-ole-storage"
     )
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 20
+    DB_POOL_TIMEOUT: int = 30
 
     # ── Provider keys
     GEMINI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
+    ELEVENLABS_API_KEY: str = ""
+    ELEVENLABS_VOICE_ID: str = "pNInz6obpgDQGcFmaJgB"
+
+    # ── SMTP Email Dispatcher (for 2FA Email OTP)
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+
+    # ── MongoDB Cloud Database
+    MONGODB_URI: str = ""
+    MONGODB_DB_NAME: str = "clinisync_db"
 
     # ── Logical model slots
     LLM_PRIMARY: str = "gemini/gemini-2.5-flash"
@@ -60,6 +86,25 @@ class Settings(BaseSettings):
     GATE1_MIN_FACT_CONFIDENCE: float = 0.60
     GATE2_MAX_REGEN_ATTEMPTS: int = 2
     PROVENANCE_FUZZY_THRESHOLD: int = 85
+
+    # ── Source Authority & Conflict Priority Hierarchy
+    # Configurable ranking from highest to lowest authority:
+    # 1. Doctor-approved consultation information
+    # 2. Doctor-entered information
+    # 3. Official clinical document
+    # 4. Laboratory report
+    # 5. Prescription
+    # 6. Patient-reported information
+    # 7. AI inference
+    SOURCE_PRIORITY_HIERARCHY: List[str] = [
+        "doctor_approved_consultation",
+        "doctor_entered",
+        "official_clinical_document",
+        "lab_report",
+        "prescription",
+        "patient_reported",
+        "ai_inference",
+    ]
 
     @property
     def allowed_mime_list(self) -> List[str]:

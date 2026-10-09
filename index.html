@@ -20,34 +20,32 @@
     try { localStorage.setItem("clinsync-theme", "light"); } catch (e) {}
   })();
 
-  /* Dynamic Web App link resolution for LAN / multi-device access */
+  /* Dynamic Web App link resolution pointing to the dedicated web app server on port 3000 */
   (function () {
-    function getAppUrl() {
+    function getWebAppUrl() {
       var host = window.location.hostname || '127.0.0.1';
       return 'http://' + host + ':3000/#/login';
     }
-    function syncAppLinks() {
-      var url = getAppUrl();
-      var links = document.querySelectorAll('a[href*=":3000"]');
+    function updateAppLinks() {
+      var url = getWebAppUrl();
+      var links = document.querySelectorAll('a[data-cursor="open"], a[data-cursor="launch"], a[data-cursor="login"], a[href*="#/login"]');
       for (var i = 0; i < links.length; i++) {
-        links[i].href = url;
+        if (!links[i].getAttribute('download')) {
+          links[i].href = url;
+          links[i].target = '_blank';
+        }
       }
     }
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', syncAppLinks);
+      document.addEventListener('DOMContentLoaded', updateAppLinks);
     } else {
-      syncAppLinks();
+      updateAppLinks();
     }
-    window.addEventListener('load', syncAppLinks);
-    document.addEventListener('click', function (e) {
-      var target = e.target && e.target.closest ? e.target.closest('a[href*=":3000"]') : null;
-      if (target) {
-        target.href = getAppUrl();
-      }
-    }, true);
+    window.addEventListener('load', updateAppLinks);
   })();
 </script>
 <link rel="stylesheet" href="assets/css/style.css" />
+<link rel="stylesheet" href="assets/css/app.css" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Circle cx='16' cy='16' r='13' fill='none' stroke='%2338bdf8' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%2338bdf8'/%3E%3C/svg%3E" />
 </head>
 <body>
@@ -122,7 +120,7 @@
       <a href="#architecture">Architecture</a>
     </nav>
     <div class="nav__actions">
-      <a href="http://127.0.0.1:3000/#/login" class="btn btn--ghost" data-cursor="login">Sign in</a>
+      <a href="http://127.0.0.1:3000/#/login" target="_blank" class="btn btn--solid" data-cursor="login" style="background:#0284c7;color:#fff;border-color:#0284c7;font-weight:600;">Open Web App →</a>
       <a href="downloads/ClinSync.apk" download="ClinSync.apk" class="btn btn--ghost" data-cursor="download" style="color:var(--accent,#ea580c);font-weight:600;">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style="display:inline-block;vertical-align:-2px;margin-right:4px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
         Download APK
@@ -135,7 +133,7 @@
 </header>
 
 <div class="mobile-menu" id="mobileMenu">
-  <a href="http://127.0.0.1:3000/#/login" style="color:var(--accent,#ea580c);font-weight:600">Sign in to App →</a>
+  <a href="http://127.0.0.1:3000/#/login" target="_blank" style="color:var(--accent,#ea580c);font-weight:600">Sign in to App →</a>
   <a href="downloads/ClinSync.apk" download="ClinSync.apk" style="color:#0284c7;font-weight:600">Download Android APK (v1.0) ↓</a>
   <a href="#problem">Why ClinSync</a>
   <a href="#workflow">Workflow</a>
@@ -185,7 +183,7 @@
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="display:inline-block;vertical-align:-3px;margin-right:8px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
           <span>Download Android APK</span>
         </a>
-        <a href="http://127.0.0.1:3000/#/login" class="btn btn--line btn--lg" data-cursor="open">
+        <a href="http://127.0.0.1:3000/#/login" target="_blank" class="btn btn--line btn--lg" data-cursor="open">
           <span>Launch Web App</span>
           <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
@@ -973,7 +971,7 @@
           <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="display:inline-block;vertical-align:-3px;margin-right:8px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
           <span>Download Android APK</span>
         </a>
-        <a href="http://127.0.0.1:3000/#/login" class="btn btn--line btn--lg" data-cursor="launch">
+        <a href="http://127.0.0.1:3000/#/login" target="_blank" class="btn btn--line btn--lg" data-cursor="launch">
           <span>Launch Web App</span>
           <svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
@@ -1012,5 +1010,6 @@
 </main>
 
 <script src="assets/js/main.js"></script>
+<script src="assets/js/app.js"></script>
 </body>
 </html>

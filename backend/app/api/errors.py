@@ -34,6 +34,11 @@ class UnauthorizedError(ClinSyncError):
         super().__init__("UNAUTHORIZED", message, status.HTTP_401_UNAUTHORIZED, details)
 
 
+class ForbiddenError(ClinSyncError):
+    def __init__(self, message: str = "Access forbidden.", details: Optional[Dict[str, Any]] = None):
+        super().__init__("FORBIDDEN", message, status.HTTP_403_FORBIDDEN, details)
+
+
 class NotFoundError(ClinSyncError):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__("NOT_FOUND", message, status.HTTP_404_NOT_FOUND, details)
@@ -68,6 +73,12 @@ class FileTooLargeError(ClinSyncError):
         super().__init__("FILE_TOO_LARGE", message, status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, details)
 
 
+class RateLimitExceededError(ClinSyncError):
+    def __init__(self, message: str = "Too many authentication requests. Please try again later.", details: Optional[Dict[str, Any]] = None):
+        super().__init__("RATE_LIMIT_EXCEEDED", message, status.HTTP_429_TOO_MANY_REQUESTS, details)
+
+
+
 class DocumentProcessingError(ClinSyncError):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__("DOCUMENT_PROCESSING_FAILED", message, status.HTTP_422_UNPROCESSABLE_ENTITY, details)
@@ -83,9 +94,46 @@ class ExtractionFailedError(ClinSyncError):
         super().__init__("EXTRACTION_FAILED", message, status.HTTP_422_UNPROCESSABLE_ENTITY, details)
 
 
-class LLMUnavailableError(ClinSyncError):
+class LLMError(ClinSyncError):
+    """Base class for all LLM provider and gateway errors."""
+    def __init__(
+        self,
+        code: str,
+        message: str,
+        status_code: int = status.HTTP_503_SERVICE_UNAVAILABLE,
+        details: Optional[Dict[str, Any]] = None,
+    ):
+        super().__init__(code, message, status_code, details)
+
+
+class LLMUnavailableError(LLMError):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__("LLM_UNAVAILABLE", message, status.HTTP_503_SERVICE_UNAVAILABLE, details)
+
+
+class LLMTimeoutError(LLMUnavailableError):
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, details)
+        self.code = "LLM_TIMEOUT"
+
+
+class LLMRateLimitError(LLMUnavailableError):
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, details)
+        self.code = "LLM_RATE_LIMIT"
+
+
+class LLMAuthenticationError(LLMUnavailableError):
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, details)
+        self.code = "LLM_AUTH_ERROR"
+
+
+class LLMOutputParsingError(LLMUnavailableError):
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(message, details)
+        self.code = "LLM_MALFORMED_OUTPUT"
+        self.status_code = status.HTTP_502_BAD_GATEWAY
 
 
 # Aliases for convenience
@@ -93,6 +141,10 @@ OCRFailed = OCRFailedError
 ExtractionFailed = ExtractionFailedError
 DocumentProcessingFailed = DocumentProcessingError
 LLMUnavailable = LLMUnavailableError
+LLMTimeout = LLMTimeoutError
+LLMRateLimit = LLMRateLimitError
+LLMAuthError = LLMAuthenticationError
+LLMMalformedOutput = LLMOutputParsingError
 
 
 class STTFailedError(ClinSyncError):

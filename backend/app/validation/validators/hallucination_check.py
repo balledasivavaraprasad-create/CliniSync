@@ -5,7 +5,8 @@ COMMON_DRUG_NAMES = [
     "metformin", "sitagliptin", "glimepiride", "insulin", "atorvastatin",
     "rosuvastatin", "amlodipine", "telmisartan", "losartan", "enalapril",
     "lisinopril", "aspirin", "clopidogrel", "pantoprazole", "omeprazole",
-    "levothyroxine", "paracetamol", "ibuprofen", "gabapentin", "pregabalin"
+    "levothyroxine", "paracetamol", "ibuprofen", "gabapentin", "pregabalin",
+    "oxycodone", "morphine", "tramadol", "fentanyl", "warfarin", "apixaban"
 ]
 
 def check_hallucination(

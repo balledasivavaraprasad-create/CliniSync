@@ -18,18 +18,23 @@ class ConsultationContent(BaseModel):
     follow_up: str = ""    # Left empty for doctor
     flags: List[ConsultationFlag] = []
     evidence_ids: List[str] = []
+    verified_memories: List[Dict[str, Any]] = []
 
 class ConsultationCreateRequest(BaseModel):
     specialty: str = "general_medicine"
     brief_id: Optional[str] = None
+    idempotency_key: Optional[str] = None
 
 class ConsultationUpdateRequest(BaseModel):
     content: Dict[str, Any]
+    expected_version_id: Optional[str] = None
 
 class ConsultationVersionCreateRequest(BaseModel):
     content: Dict[str, Any]
     change_summary: Optional[str] = None
+    expected_version_id: Optional[str] = None
 
 class ConsultationApproveRequest(BaseModel):
     acknowledged_unedited: bool = False
+    expected_version_id: Optional[str] = None
     notes: Optional[str] = None

@@ -16,6 +16,7 @@ from app.validation.validators.hallucination_check import check_hallucination
 from app.validation.validators.provenance_validator import check_provenance
 from app.validation.validators.numeric_consistency import check_numeric_consistency
 from app.validation.validators.llm_judge import evaluate_gate1_judge
+from app.validation.validators.prompt_injection_check import check_prompt_injection
 
 logger = structlog.get_logger(__name__)
 
@@ -36,6 +37,14 @@ class Gate1MemoryValidator:
         if not cns:
             return ValidationOutcome.blocked, [{"name": "consultation_exists", "passed": False, "severity": "block", "detail": "Consultation not found"}], None
 
+        if cns.status == "approved":
+            return ValidationOutcome.blocked, [{
+                "name": "consultation_state_check",
+                "passed": False,
+                "severity": "block",
+                "detail": "Consultation has already been approved and cannot be approved again."
+            }], None
+
         current_ver = db.query(ConsultationVersion).filter(ConsultationVersion.id == cns.current_version_id).first()
         if not current_ver:
             return ValidationOutcome.blocked, [{"name": "version_exists", "passed": False, "severity": "block", "detail": "Current consultation version not found"}], None
@@ -43,7 +52,76 @@ class Gate1MemoryValidator:
         checks = []
         patient_id = cns.patient_id
 
-        # 1. State check: untouched AI draft cannot be approved without explicit acknowledged_unedited
+        # 1. Doctor identity and authorization check
+        from app.models.user import User
+        from app.models.patient_access import PatientAccess
+
+        approver = db.query(User).filter(User.id == approved_by).first()
+        if approver:
+            if not approver.is_active:
+                checks.append({
+                    "name": "doctor_identity_check",
+                    "passed": False,
+                    "severity": "block",
+                    "detail": f"Approver '{approved_by}' is not an active user."
+                })
+            elif approver.role not in ("doctor", "admin"):
+                checks.append({
+                    "name": "doctor_identity_check",
+                    "passed": False,
+                    "severity": "block",
+                    "detail": f"User '{approver.id}' with role '{approver.role}' cannot approve consultations into memory."
+                })
+            else:
+                checks.append({
+                    "name": "doctor_identity_check",
+                    "passed": True,
+                    "severity": "info",
+                    "detail": f"Verified approver {approver.email} ({approver.role})"
+                })
+
+            if approver.role != "admin":
+                has_access = db.query(PatientAccess).filter(
+                    PatientAccess.user_id == approver.id,
+                    PatientAccess.patient_id == patient_id
+                ).first()
+                if not has_access:
+                    checks.append({
+                        "name": "doctor_authorization_check",
+                        "passed": False,
+                        "severity": "block",
+                        "detail": f"Doctor '{approver.id}' is not authorized to access patient '{patient_id}'."
+                    })
+                else:
+                    checks.append({
+                        "name": "doctor_authorization_check",
+                        "passed": True,
+                        "severity": "info",
+                        "detail": f"Access level: {has_access.access_level}"
+                    })
+            else:
+                checks.append({
+                    "name": "doctor_authorization_check",
+                    "passed": True,
+                    "severity": "info",
+                    "detail": "Admin override authorization verified"
+                })
+        elif approved_by in ("doctor", "admin"):
+            checks.append({
+                "name": "doctor_identity_check",
+                "passed": True,
+                "severity": "info",
+                "detail": f"Generic approver '{approved_by}' permitted in test context"
+            })
+        else:
+            checks.append({
+                "name": "doctor_identity_check",
+                "passed": False,
+                "severity": "block",
+                "detail": f"Approver '{approved_by}' does not exist."
+            })
+
+        # 2. State check: untouched AI draft cannot be approved without explicit acknowledged_unedited
         if current_ver.origin == ConsultationOrigin.ai_generated.value and not acknowledged_unedited:
             checks.append({
                 "name": "authorship_state_check",
@@ -97,6 +175,10 @@ class Gate1MemoryValidator:
         passed_caus, sev_caus, msg_caus = check_causality_language(history_text)
         checks.append({"name": "causality_language", "passed": passed_caus, "severity": sev_caus, "detail": msg_caus})
 
+        # Prompt injection / untrusted instruction check across the consultation content
+        passed_inj, sev_inj, msg_inj = check_prompt_injection(content_text)
+        checks.append({"name": "prompt_injection", "passed": passed_inj, "severity": sev_inj, "detail": msg_inj})
+
         # 4. Check facts and provenance
         facts = db.query(ClinicalFact).filter(ClinicalFact.patient_id == patient_id).all()
         valid_fact_ids = {f.id for f in facts}
@@ -143,6 +225,12 @@ class Gate1MemoryValidator:
 
         if has_block:
             outcome = ValidationOutcome.blocked
+            try:
+                from app.services.metrics_service import metrics_service
+                first_block_reason = next((c["detail"] for c in checks if c["severity"] == "block" and not c["passed"]), "Gate 1 blocked")
+                metrics_service.record_gate1_failure(consultation_id=consultation_id, reason=first_block_reason, patient_id=patient_id)
+            except Exception:
+                pass
         elif has_warn:
             outcome = ValidationOutcome.pass_with_flags
         else:

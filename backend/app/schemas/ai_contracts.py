@@ -20,19 +20,18 @@ class DocClassification(BaseModel):
 
 class EvidenceReference(BaseModel):
     text: str = Field(..., description="Verbatim text snippet from the document")
-    page: int = Field(default=1, description="1-indexed page number")
+    page: Optional[int] = Field(default=None, description="1-indexed page number")
 
     @model_validator(mode="before")
     @classmethod
     def validate_page(cls, data: Any) -> Any:
         if isinstance(data, dict):
-            if "page" not in data or data["page"] is None:
-                data["page"] = 1
-            elif isinstance(data["page"], str):
-                try:
-                    data["page"] = int(data["page"])
-                except ValueError:
-                    data["page"] = 1
+            if "page" in data and data["page"] is not None:
+                if isinstance(data["page"], str):
+                    try:
+                        data["page"] = int(data["page"])
+                    except ValueError:
+                        data["page"] = None
         return data
 
 
@@ -45,6 +44,8 @@ class ExtractionMedication(BaseModel):
     route: Optional[str] = None
     confidence: float = 0.9
     evidence: EvidenceReference
+    status: Optional[str] = "DOCUMENTED"
+    semantic_state: str = "DOCUMENTED"
 
 
 class ExtractionInvestigation(BaseModel):
@@ -56,6 +57,8 @@ class ExtractionInvestigation(BaseModel):
     date: Optional[str] = None
     confidence: float = 0.9
     evidence: EvidenceReference
+    status: Optional[str] = "DOCUMENTED"
+    semantic_state: str = "DOCUMENTED"
 
     @model_validator(mode="before")
     @classmethod
@@ -71,6 +74,8 @@ class ExtractionDiagnosis(BaseModel):
     date: Optional[str] = None
     confidence: float = 0.9
     evidence: EvidenceReference
+    status: Optional[str] = "DOCUMENTED"
+    semantic_state: str = "DOCUMENTED"
 
     @model_validator(mode="before")
     @classmethod
@@ -85,6 +90,8 @@ class ExtractionGenericItem(BaseModel):
     text: str
     confidence: float = 0.9
     evidence: EvidenceReference
+    status: Optional[str] = "DOCUMENTED"
+    semantic_state: str = "DOCUMENTED"
 
     @model_validator(mode="before")
     @classmethod

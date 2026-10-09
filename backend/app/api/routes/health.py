@@ -112,3 +112,19 @@ def deep_health_check(
             "source": "system",
         },
     }
+
+
+@router.get("/metrics")
+@router.get("/metrics/ai")
+def get_ai_and_pipeline_metrics(request_id: str = Depends(get_request_id)):
+    """Returns AI and document pipeline observability metrics."""
+    from app.services.metrics_service import metrics_service
+    summary = metrics_service.get_summary()
+    return {
+        "success": True,
+        "data": summary,
+        "meta": {
+            "request_id": request_id,
+            "source": "metrics_service",
+        },
+    }

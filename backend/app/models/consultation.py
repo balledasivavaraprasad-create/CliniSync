@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 from app.models.base import TimestampMixin
@@ -10,13 +10,19 @@ class Consultation(Base, TimestampMixin):
 
     id = Column(String(32), primary_key=True, default=consultation_id)
     patient_id = Column(String(32), ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    brief_id = Column(String(32), nullable=True)
+    brief_id = Column(String(32), ForeignKey("briefs.id", ondelete="SET NULL"), nullable=True, index=True)
     specialty = Column(String(64), default="general_medicine", nullable=False)
     status = Column(String(32), default="draft", nullable=False)  # draft | in_review | approved
     current_version_id = Column(String(32), nullable=True)
     approved_at = Column(DateTime, nullable=True)
     approved_by = Column(String(128), nullable=True)
 
+    __table_args__ = (
+        Index("ix_consultations_patient_status", "patient_id", "status"),
+    )
+
+    patient = relationship("Patient", back_populates="consultations")
+    brief = relationship("Brief", foreign_keys=[brief_id])
     versions = relationship("ConsultationVersion", back_populates="consultation", cascade="all, delete-orphan")
 
 
@@ -30,6 +36,11 @@ class ConsultationVersion(Base, TimestampMixin):
     content_json = Column(Text, nullable=False)
     change_summary = Column(String(255), nullable=True)
     edited_by = Column(String(128), nullable=True)
-    validation_report_id = Column(String(32), nullable=True)
+    validation_report_id = Column(String(32), ForeignKey("validation_reports.id", ondelete="SET NULL"), nullable=True, index=True)
+
+    __table_args__ = (
+        UniqueConstraint("consultation_id", "version_number", name="uq_consultation_version_num"),
+    )
 
     consultation = relationship("Consultation", back_populates="versions")
+    validation_report = relationship("ValidationReport", foreign_keys=[validation_report_id])

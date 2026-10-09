@@ -8,6 +8,7 @@ DIRECTIVE_PATTERNS = [
     r"\bpatient must take\b",
     r"\bincrease\s+[A-Za-z0-9]+\s+to\s+\d+",
     r"\bpatient should be started on\b",
+    r"\b(you\s+must|must)\s+.*?\b(prescribe|start|stop|take|administer)\b",
 ]
 
 def check_directive_language(text: str) -> Tuple[bool, str, str]:

@@ -574,6 +574,7 @@ def seed_demo_data(reset: bool = True):
         ]
 
         # 2. Iterate through and persist documents, pages, facts, labs, meds, timeline events
+        seeded_fact_map: dict = {}
         for cfg in doc_configs:
             fixture_path = FIXTURES_DIR / cfg["filename"]
             content = fixture_path.read_bytes()
@@ -611,9 +612,16 @@ def seed_demo_data(reset: bool = True):
             db.add(page)
             db.flush()
 
+            page_text_lower = cfg["text"].lower()
+
             # Facts
             for f in cfg["facts"]:
                 f_id = fact_id()
+                seeded_fact_map[f"fact_{cfg['id']}_{f['type']}"] = f_id
+                exact_idx = page_text_lower.find(f["source_text"].strip().lower())
+                s_start = exact_idx if exact_idx != -1 else 0
+                s_end = s_start + len(f["source_text"].strip())
+
                 fact = ClinicalFact(
                     id=f_id,
                     patient_id=DEMO_PATIENT_ID,
@@ -626,8 +634,10 @@ def seed_demo_data(reset: bool = True):
                     confidence_band=ConfidenceBand.high.value,
                     source_text=f["source_text"],
                     source_page=1,
+                    source_span_start=s_start,
+                    source_span_end=s_end,
                     provenance_verified=True,
-                    verification_status=VerificationStatus.unverified.value,
+                    verification_status=VerificationStatus.doctor_verified.value,
                     extraction_model="seed",
                 )
                 db.add(fact)
@@ -651,6 +661,11 @@ def seed_demo_data(reset: bool = True):
             # Labs
             for l in cfg["labs"]:
                 f_id = fact_id()
+                seeded_fact_map[f"lab_{cfg['id']}_{l['test_canon']}"] = f_id
+                exact_idx = page_text_lower.find(l["source_text"].strip().lower())
+                s_start = exact_idx if exact_idx != -1 else 0
+                s_end = s_start + len(l["source_text"].strip())
+
                 fact = ClinicalFact(
                     id=f_id,
                     patient_id=DEMO_PATIENT_ID,
@@ -663,8 +678,10 @@ def seed_demo_data(reset: bool = True):
                     confidence_band=ConfidenceBand.high.value,
                     source_text=l["source_text"],
                     source_page=1,
+                    source_span_start=s_start,
+                    source_span_end=s_end,
                     provenance_verified=True,
-                    verification_status=VerificationStatus.unverified.value,
+                    verification_status=VerificationStatus.doctor_verified.value,
                     extraction_model="seed",
                 )
                 db.add(fact)
@@ -707,6 +724,11 @@ def seed_demo_data(reset: bool = True):
             # Meds
             for m in cfg["meds"]:
                 f_id = fact_id()
+                seeded_fact_map[f"med_{cfg['id']}_{m['name_canon']}"] = f_id
+                exact_idx = page_text_lower.find(m["source_text"].strip().lower())
+                s_start = exact_idx if exact_idx != -1 else 0
+                s_end = s_start + len(m["source_text"].strip())
+
                 fact = ClinicalFact(
                     id=f_id,
                     patient_id=DEMO_PATIENT_ID,
@@ -719,8 +741,10 @@ def seed_demo_data(reset: bool = True):
                     confidence_band=ConfidenceBand.high.value,
                     source_text=m["source_text"],
                     source_page=1,
+                    source_span_start=s_start,
+                    source_span_end=s_end,
                     provenance_verified=True,
-                    verification_status=VerificationStatus.unverified.value,
+                    verification_status=VerificationStatus.doctor_verified.value,
                     extraction_model="seed",
                 )
                 db.add(fact)
@@ -769,19 +793,28 @@ def seed_demo_data(reset: bool = True):
         missing_info_service.recompute(db, DEMO_PATIENT_ID)
 
         # 4. Generate Pre-Computed Verified Doctor Brief
+        init_diag_fid = seeded_fact_map.get("fact_doc_demo_001_consult_jan_diagnosis", "fact_demo_diag_1")
+        followup_diag_fid = seeded_fact_map.get("fact_doc_demo_004_consult_jun_diagnosis", init_diag_fid)
+        metformin_fid = seeded_fact_map.get("med_doc_demo_005_rx_sep_metformin", "fact_demo_med_1")
+        glimepiride_fid = seeded_fact_map.get("med_doc_demo_005_rx_sep_glimepiride", "fact_demo_med_2")
+        hba1c_1_fid = seeded_fact_map.get("lab_doc_demo_001_consult_jan_hba1c", "fact_demo_lab_1")
+        hba1c_2_fid = seeded_fact_map.get("lab_doc_demo_003_lab_apr_hba1c", "fact_demo_lab_2")
+        hba1c_3_fid = seeded_fact_map.get("lab_doc_demo_006_discharge_sep_hba1c", "fact_demo_lab_3")
+        creat_fid = seeded_fact_map.get("lab_doc_demo_006_discharge_sep_serum_creatinine", "fact_demo_lab_4")
+
         brief_data = {
             "patient": {"id": DEMO_PATIENT_ID, "name": DEMO_PATIENT_NAME, "age": 52},
             "specialty": "general_medicine",
             "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "chief_complaint": {
                 "text": "Polyuria, polydipsia, and fatigue documented at initial consultation.",
-                "evidence_ids": ["doc_demo_001_consult_jan"],
+                "evidence_ids": [init_diag_fid],
                 "confidence_band": "high",
             },
             "relevant_history": [
                 {
                     "text": "Diagnosed with Type 2 Diabetes Mellitus in Jan 2026; steady weight 78 kg.",
-                    "evidence_ids": ["doc_demo_001_consult_jan", "doc_demo_004_consult_jun"],
+                    "evidence_ids": [init_diag_fid, followup_diag_fid],
                     "confidence_band": "high",
                 }
             ],
@@ -792,7 +825,7 @@ def seed_demo_data(reset: bool = True):
                     "dose": "500 mg",
                     "frequency": "twice daily (BD)",
                     "status": "current",
-                    "evidence_ids": ["doc_demo_005_rx_sep"],
+                    "evidence_ids": [metformin_fid],
                     "confidence_band": "high",
                     "conflict_flag": True,
                 },
@@ -802,7 +835,7 @@ def seed_demo_data(reset: bool = True):
                     "dose": "1 mg",
                     "frequency": "once daily (OD)",
                     "status": "current",
-                    "evidence_ids": ["doc_demo_005_rx_sep"],
+                    "evidence_ids": [glimepiride_fid],
                     "confidence_band": "high",
                     "conflict_flag": False,
                 },
@@ -810,7 +843,7 @@ def seed_demo_data(reset: bool = True):
             "allergies": [
                 {
                     "text": "Allergy status not documented in records.",
-                    "evidence_ids": ["doc_demo_001_consult_jan"],
+                    "evidence_ids": [],
                     "status": "not_documented",
                 }
             ],
@@ -822,7 +855,7 @@ def seed_demo_data(reset: bool = True):
                     "reference": "4.0 - 5.6 %",
                     "date": "2026-09-28",
                     "abnormal": "high",
-                    "evidence_ids": ["doc_demo_006_discharge_sep"],
+                    "evidence_ids": [hba1c_3_fid],
                 },
                 {
                     "test": "Serum Creatinine",
@@ -831,7 +864,7 @@ def seed_demo_data(reset: bool = True):
                     "reference": "0.7 - 1.2 mg/dL",
                     "date": "2026-09-28",
                     "abnormal": "normal",
-                    "evidence_ids": ["doc_demo_006_discharge_sep"],
+                    "evidence_ids": [creat_fid],
                 },
             ],
             "important_trends": [
@@ -844,26 +877,29 @@ def seed_demo_data(reset: bool = True):
                     ],
                     "direction": "down",
                     "description": "HbA1c recorded 8.4% (Jan 2026), 8.0% (Apr 2026), 7.8% (Sep 2026): decreasing across three measurements.",
-                    "evidence_ids": ["doc_demo_001_consult_jan", "doc_demo_003_lab_apr", "doc_demo_006_discharge_sep"],
+                    "evidence_ids": [hba1c_1_fid, hba1c_2_fid, hba1c_3_fid],
                 }
             ],
             "attention_items": [
                 {
                     "text": "Medication conflict: Two records on 12/09/2026 contain differing Metformin doses (500 mg BD vs 1000 mg BD).",
                     "severity": "medium",
-                    "evidence_ids": ["doc_demo_005_rx_sep"],
+                    "evidence_ids": [metformin_fid],
                 },
                 {
                     "text": "Missing information: Allergy status not documented in records.",
                     "severity": "medium",
-                    "evidence_ids": ["doc_demo_001_consult_jan"],
+                    "evidence_ids": [],
                 },
             ],
             "contradictions": [
                 {
                     "issue_id": "iss_metformin_conflict",
                     "text": "Two records on 12/09/2026 contain differing Metformin doses: 500 mg BD vs 1000 mg BD.",
-                    "sources": ["doc_demo_005_rx_sep"],
+                    "sources": [
+                        "500 mg · twice daily · doc5_prescription_sep2026.pdf",
+                        "1000 mg · twice daily · doc5_prescription_sep2026.pdf",
+                    ],
                 }
             ],
             "missing_information": [
@@ -877,9 +913,9 @@ def seed_demo_data(reset: bool = True):
                 },
             ],
             "evidence_shortcuts": [
-                {"evidence_id": "ev_001", "label": "Initial Diagnosis", "document_id": "doc_demo_001_consult_jan", "page": 1},
-                {"evidence_id": "ev_002", "label": "Updated Rx BD", "document_id": "doc_demo_005_rx_sep", "page": 1},
-                {"evidence_id": "ev_003", "label": "Latest HbA1c 7.8%", "document_id": "doc_demo_006_discharge_sep", "page": 1},
+                {"evidence_id": init_diag_fid, "label": "Initial Diagnosis", "document_id": "doc_demo_001_consult_jan", "page": 1},
+                {"evidence_id": metformin_fid, "label": "Updated Rx BD", "document_id": "doc_demo_005_rx_sep", "page": 1},
+                {"evidence_id": hba1c_3_fid, "label": "Latest HbA1c 7.8%", "document_id": "doc_demo_006_discharge_sep", "page": 1},
             ],
             "disclaimer": "AI-assisted summary of source records. Not a diagnosis or treatment recommendation. Verify against sources.",
         }

@@ -21,8 +21,13 @@ A developer can still point the suite at a real database deliberately by setting
 import atexit
 import os
 import shutil
+import sys
 import tempfile
 from pathlib import Path
+
+_BACKEND_DIR = Path(__file__).resolve().parent.parent / 'backend'
+if str(_BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_DIR))
 
 _TEST_ROOT = Path(tempfile.mkdtemp(prefix='clinsync-tests-'))
 _REAL_DB = os.environ.get('CLINSYNC_TEST_DATABASE_URL')

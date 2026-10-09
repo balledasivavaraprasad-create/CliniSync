@@ -30,14 +30,30 @@ class DocumentType(str, Enum):
 
 
 class ProcessingStatus(str, Enum):
+    # Canonical explicit pipeline states
+    UPLOADED = "UPLOADED"
+    QUEUED = "QUEUED"
+    PROCESSING = "PROCESSING"
+    EXTRACTING = "EXTRACTING"
+    VALIDATING = "VALIDATING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    RETRY_PENDING = "RETRY_PENDING"
+
+    # Lowercase aliases for backward compatibility
     uploaded = "uploaded"
+    queued = "queued"
+    processing = "processing"
+    extracting = "extracting"
     extracting_text = "extracting_text"
     classifying = "classifying"
     extracting_entities = "extracting_entities"
     normalizing = "normalizing"
     validating = "validating"
     complete = "complete"
+    completed = "completed"
     failed = "failed"
+    retry_pending = "retry_pending"
     needs_review = "needs_review"
 
 
@@ -56,11 +72,32 @@ class FactType(str, Enum):
     other = "other"
 
 
+class ClinicalSemanticState(str, Enum):
+    DOCUMENTED = "DOCUMENTED"
+    INFERRED = "INFERRED"
+    UNVERIFIED = "UNVERIFIED"
+    CONFLICTING = "CONFLICTING"
+    MISSING = "MISSING"
+    UNKNOWN = "UNKNOWN"
+
+
 class VerificationStatus(str, Enum):
     unverified = "unverified"
     needs_verification = "needs_verification"
     doctor_verified = "doctor_verified"
     doctor_rejected = "doctor_rejected"
+    # Canonical semantic states
+    documented = "documented"
+    inferred = "inferred"
+    conflicting = "conflicting"
+    missing = "missing"
+    unknown = "unknown"
+    DOCUMENTED = "DOCUMENTED"
+    INFERRED = "INFERRED"
+    UNVERIFIED = "UNVERIFIED"
+    CONFLICTING = "CONFLICTING"
+    MISSING = "MISSING"
+    UNKNOWN = "UNKNOWN"
 
 
 class ConfidenceBand(str, Enum):
@@ -83,12 +120,15 @@ class ConsultationOrigin(str, Enum):
 
 class IssueType(str, Enum):
     medication_conflict = "medication_conflict"
+    lab_conflict = "lab_conflict"
+    investigation_conflict = "investigation_conflict"
     date_conflict = "date_conflict"
     duplicate_record = "duplicate_record"
     unclear_medication_status = "unclear_medication_status"
     diagnosis_conflict = "diagnosis_conflict"
     low_confidence_fact = "low_confidence_fact"
     missing_information = "missing_information"
+    prompt_injection_attempt = "prompt_injection_attempt"
 
 
 class MedStatus(str, Enum):

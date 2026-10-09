@@ -14,6 +14,7 @@ from app.models.processing_job import ProcessingJob
 from app.models.validation_report import ValidationReport
 from app.models.audit_log import AuditLog, LLMCallLog
 from app.models.user import User
+from app.models.patient_access import PatientAccess
 
 __all__ = [
     "Base",
@@ -36,4 +37,5 @@ __all__ = [
     "ValidationReport",
     "AuditLog",
     "LLMCallLog",
+    "PatientAccess",
 ]

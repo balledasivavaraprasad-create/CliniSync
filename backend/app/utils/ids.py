@@ -28,4 +28,5 @@ def user_id() -> str: return generate_id("usr")
 consultation_version_id = version_id
 clinical_memory_id = memory_id
 validation_report_id = report_id
+clinical_fact_id = fact_id
 

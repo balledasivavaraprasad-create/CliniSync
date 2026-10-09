@@ -42,3 +42,12 @@ class DocumentStatusResponse(BaseModel):
     current_stage: str
     stages: List[dict]
     error_code: Optional[str] = None
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+    completion_time: Optional[datetime] = None
+    retry_count: int = 0
+    failure_reason: Optional[str] = None
+    error_detail: Optional[str] = None
+
+    class Config:
+        from_attributes = True
